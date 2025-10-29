@@ -40,6 +40,14 @@ export class MessageService {
     await Message.findOneAndDelete({ commentId });
   }
 
+  async getMessagesByUser(userId: string): Promise<IMessage[]> {
+    return await Message.find({ userId }).sort({ date: -1 });
+  }
+
+  async getMessagesByUserEmail(userEmail: string): Promise<IMessage[]> {
+    return await Message.find({ userEmail }).sort({ date: -1 });
+  }
+
   async getMessageStats() {
     const total = await Message.countDocuments();
     const unread = await Message.countDocuments({ approved: 0 });
