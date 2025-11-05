@@ -21,7 +21,30 @@ export const getMessageById = asyncHandler(
 export const createMessage = asyncHandler(
   async (req: Request, res: Response, _next: NextFunction) => {
     const messageData = req.body;
-    const newMessage = await messageService.createMessage(messageData);
+    const userEmail = req.user?.userEmail;
+    
+    if (!userEmail) {
+      res.status(401).json({
+        success: false,
+        message: "User not authenticated"
+      });
+      return;
+    }
+
+    // Ensure required fields are present
+    const messageWithUser = {
+      commentId: messageData.commentId || new Date().getTime().toString(),
+      userId: messageData.userId || req.user?.userId || userEmail,
+      userName: messageData.userName || req.user?.userName || 'Anonymous',
+      userEmail: userEmail,
+      type: messageData.type || 'message',
+      content: messageData.content || [],
+      approved: messageData.approved || 1,
+      date: messageData.date || new Date()
+    };
+
+    console.log("Creating message with data:", messageWithUser);
+    const newMessage = await messageService.createMessage(messageWithUser);
     ApiResponse.created(res, newMessage, "Message created successfully");
   }
 );
@@ -30,6 +53,27 @@ export const updateMessage = asyncHandler(
   async (req: Request, res: Response, _next: NextFunction) => {
     const { id } = req.params;
     const updateData = req.body;
+    const userEmail = req.user?.userEmail;
+
+    if (!userEmail) {
+      res.status(401).json({
+        success: false,
+        message: "User not authenticated"
+      });
+      return;
+    }
+
+    // Verify user owns this message
+    const existingMessage = await messageService.getMessageById(id);
+    if (!existingMessage || existingMessage.userEmail !== userEmail) {
+      res.status(403).json({
+        success: false,
+        message: "Not authorized to update this message"
+      });
+      return;
+    }
+
+    console.log("Updating message with data:", updateData);
     const updatedMessage = await messageService.updateMessage(id, updateData);
     ApiResponse.success(res, updatedMessage, "Message updated successfully");
   }
@@ -57,12 +101,32 @@ export const deleteMessage = asyncHandler(
 
 export const getMyMessages = asyncHandler(
   async (req: Request, res: Response, _next: NextFunction) => {
+    console.log("getMyMessages - req.user:", req.user);
+    console.log("getMyMessages - Authorization header:", req.headers.authorization);
+    
     const userEmail = req.user?.userEmail;
+    
     if (!userEmail) {
-      throw new Error("User email not found");
+      console.log("getMyMessages - No userEmail found in req.user");
+      res.status(401).json({
+        success: false,
+        message: "User not authenticated",
+        data: []
+      });
+      return;
     }
-    const messages = await messageService.getMessagesByUserEmail(userEmail);
-    ApiResponse.success(res, messages, "User messages retrieved successfully");
+
+    try {
+      const messages = await messageService.getMessagesByUserEmail(userEmail);
+      ApiResponse.success(res, messages || [], "User messages retrieved successfully");
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to retrieve messages",
+        data: []
+      });
+    }
   }
 );
 
@@ -91,8 +155,9 @@ export const messageStream = asyncHandler(
         try {
           const { verifyAccessToken } = await import("@/utils/jwt.utils");
           const decoded = verifyAccessToken(token);
-          if (decoded && decoded.userEmail) {
-            userEmail = decoded.userEmail;
+          // Support both userEmail and email in JWT payloads
+          if (decoded) {
+            userEmail = (decoded as any).userEmail || (decoded as any).email || undefined;
           }
         } catch (error) {
           // Invalid token
@@ -120,12 +185,8 @@ export const messageStream = asyncHandler(
       try {
         const messages = await messageService.getMessagesByUserEmail(userEmail);
         
-        // Find messages newer than lastId
+        // Find messages with new content since last check
         const newMessages = messages
-          .filter((msg) => {
-            if (!lastId) return true;
-            return msg.commentId && parseInt(msg.commentId) > parseInt(lastId);
-          })
           .flatMap((msg) => {
             // Extract individual messages from content array
             if (Array.isArray(msg.content)) {
@@ -136,6 +197,13 @@ export const messageStream = asyncHandler(
               }));
             }
             return [];
+          })
+          .filter((msg) => {
+            // Filter by time instead of commentId to catch new replies
+            if (!lastId) return true;
+            const msgTime = new Date(msg.time).getTime();
+            const lastTime = new Date().getTime() - 10000; // Last 10 seconds
+            return msgTime > lastTime;
           });
 
         // Send each new message

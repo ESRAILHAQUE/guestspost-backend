@@ -16,19 +16,17 @@ import { protect, authorize } from "@/middlewares/auth.middleware";
 
 const router = Router();
 
-// Public routes - Get active packages
+// Public routes - No authentication required
+router.route("/").get(getPackages);
 router.route("/active").get(getPackages);
+router.route("/:id").get(getPackageById);
 
 // Protected routes - Admin only
 router.use(protect);
 router.use(authorize("admin"));
 
-router.route("/").post(createPackage).get(getPackages);
+router.route("/").post(createPackage);
 router.route("/stats").get(getPackageStats);
-router
-  .route("/:id")
-  .get(getPackageById)
-  .put(updatePackage)
-  .delete(deletePackage);
+router.route("/:id").put(updatePackage).delete(deletePackage);
 
 export { router as packageRoutes };

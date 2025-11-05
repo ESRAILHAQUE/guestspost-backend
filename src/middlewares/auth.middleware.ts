@@ -44,19 +44,25 @@ export const protect = async (
     }
 
     if (!token) {
+      console.log("No token found in request");
       throw new UnauthorizedError(
         "Not authorized to access this route. Please login."
       );
     }
 
     // Verify token
+    console.log("Verifying token:", token.substring(0, 20) + "...");
     const decoded = verifyAccessToken(token);
+    console.log("Decoded token:", decoded);
 
     // Check if user still exists
     const user = await User.findById(decoded.userId);
     if (!user) {
+      console.log("User not found for token");
       throw new UnauthorizedError("User no longer exists");
     }
+
+    console.log("User found:", user.user_email);
 
     // Check if user is active
     if (user.user_status !== "active") {
@@ -69,6 +75,8 @@ export const protect = async (
     req.user = {
       ...decoded,
       _id: user._id.toString(),
+      userEmail: user.user_email,
+      userId: user._id.toString(),
     };
 
     next();

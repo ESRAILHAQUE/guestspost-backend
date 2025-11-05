@@ -32,7 +32,10 @@ export class MessageService {
     if (!message) return null;
 
     message.content.push(newMessage);
-    message.date = new Date();
+    message.date = new Date(); // Update date so SSE stream can detect new messages
+    message.approved = 1; // Mark as approved
+    
+    console.log(`Added reply to thread ${commentId}, new content length:`, message.content.length);
     return await message.save();
   }
 
@@ -45,7 +48,17 @@ export class MessageService {
   }
 
   async getMessagesByUserEmail(userEmail: string): Promise<IMessage[]> {
-    return await Message.find({ userEmail }).sort({ date: -1 });
+    try {
+      if (!userEmail) {
+        return [];
+      }
+      
+      const messages = await Message.find({ userEmail }).sort({ date: -1 });
+      return messages || [];
+    } catch (error) {
+      console.error("Error fetching messages by user email:", error);
+      return [];
+    }
   }
 
   async getMessageStats() {

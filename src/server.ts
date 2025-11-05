@@ -66,6 +66,7 @@ const startServer = async (): Promise<void> => {
   }
 };
 
+
 // Create Express app for Vercel
 const app = createApp();
 
