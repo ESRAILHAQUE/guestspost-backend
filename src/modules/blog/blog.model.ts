@@ -119,16 +119,9 @@ blogPostSchema.index({ publishedAt: -1 });
 blogPostSchema.index({ title: "text", content: "text", excerpt: "text" }); // Text search
 
 /**
- * Pre-save middleware to auto-generate slug from title
+ * Pre-save middleware
  */
 blogPostSchema.pre("save", function (next) {
-  if (this.isModified("title") && !this.slug) {
-    this.slug = this.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-  }
-
   // Set publishedAt when status changes to published
   if (
     this.isModified("status") &&

@@ -9,6 +9,7 @@ import { logger } from "@/utils/logger";
 
 export interface CreateBlogPostDto {
   title: string;
+  slug?: string; // Optional, will be auto-generated from title if not provided
   content: string;
   excerpt?: string;
   author: string;
@@ -50,8 +51,12 @@ class BlogService {
    */
   async createBlogPost(data: CreateBlogPostDto): Promise<IBlogPost> {
     try {
+      // Auto-generate slug from title if not provided
+      const slug = data.slug || this.generateSlug(data.title);
+      
       const blogPost = new BlogPost({
         ...data,
+        slug,
         status: data.status || "draft",
         views: 0,
       });
@@ -75,6 +80,16 @@ class BlogService {
       
       throw new AppError(error.message || "Failed to create blog post", 500);
     }
+  }
+
+  /**
+   * Generate slug from title
+   */
+  private generateSlug(title: string): string {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
   }
 
   /**
