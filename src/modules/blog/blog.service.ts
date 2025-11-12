@@ -62,7 +62,18 @@ class BlogService {
       return blogPost;
     } catch (error: any) {
       logger.error("Error creating blog post:", error);
-      throw new AppError("Failed to create blog post", 500);
+      
+      // Return more specific error messages
+      if (error.name === "ValidationError") {
+        const messages = Object.values(error.errors).map((err: any) => err.message);
+        throw new AppError(`Validation failed: ${messages.join(", ")}`, 400);
+      }
+      
+      if (error.code === 11000) {
+        throw new AppError("A blog post with this slug already exists", 409);
+      }
+      
+      throw new AppError(error.message || "Failed to create blog post", 500);
     }
   }
 
@@ -217,7 +228,18 @@ class BlogService {
     } catch (error: any) {
       if (error instanceof AppError) throw error;
       logger.error("Error updating blog post:", error);
-      throw new AppError("Failed to update blog post", 500);
+      
+      // Return more specific error messages
+      if (error.name === "ValidationError") {
+        const messages = Object.values(error.errors).map((err: any) => err.message);
+        throw new AppError(`Validation failed: ${messages.join(", ")}`, 400);
+      }
+      
+      if (error.code === 11000) {
+        throw new AppError("A blog post with this slug already exists", 409);
+      }
+      
+      throw new AppError(error.message || "Failed to update blog post", 500);
     }
   }
 
