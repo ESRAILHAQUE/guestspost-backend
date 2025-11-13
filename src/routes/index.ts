@@ -17,6 +17,7 @@ import { reviewRoutes } from "@/modules/review/review.routes";
 import { activityRoutes } from "@/modules/activity/activity.routes";
 import { messageRoutes } from "@/modules/message/message.routes";
 import serviceRoutes from "@/modules/service/service.routes";
+import servicePackageRoutes from "@/modules/servicePackage/servicePackage.routes";
 
 const router = Router();
 
@@ -30,6 +31,7 @@ router.use("/blog", blogRoutes);
 router.use("/site-submissions", siteSubmissionRoutes);
 router.use("/packages", packageRoutes);
 router.use("/services", serviceRoutes);
+router.use("/service-packages", servicePackageRoutes);
 router.use("/reviews", reviewRoutes);
 router.use("/activities", activityRoutes);
 router.use("/messages", messageRoutes);

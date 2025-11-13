@@ -17,6 +17,7 @@ import { protect, authorize } from "@/middlewares/auth.middleware";
 const router = Router();
 
 // Public routes - No authentication required
+
 router.route("/").get(getPackages);
 router.route("/active").get(getPackages);
 router.route("/:id").get(getPackageById);
