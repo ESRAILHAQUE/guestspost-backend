@@ -16,6 +16,7 @@ import { packageRoutes } from "@/modules/package/package.routes";
 import { reviewRoutes } from "@/modules/review/review.routes";
 import { activityRoutes } from "@/modules/activity/activity.routes";
 import { messageRoutes } from "@/modules/message/message.routes";
+import serviceRoutes from "@/modules/service/service.routes";
 
 const router = Router();
 
@@ -28,6 +29,7 @@ router.use("/fund-requests", fundRequestRoutes);
 router.use("/blog", blogRoutes);
 router.use("/site-submissions", siteSubmissionRoutes);
 router.use("/packages", packageRoutes);
+router.use("/services", serviceRoutes);
 router.use("/reviews", reviewRoutes);
 router.use("/activities", activityRoutes);
 router.use("/messages", messageRoutes);
