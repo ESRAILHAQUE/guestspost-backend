@@ -19,8 +19,9 @@ router.route("/me").get(protect, getMyMessages);
 // SSE endpoint for real-time message updates (token in query param for SSE compatibility)
 router.route("/stream").get(messageStream);
 
-// Protected routes for message creation/updates
+// Protected routes for message creation/updates (users can create and update their own messages)
 router.route("/").post(protect, createMessage);
+router.route("/:id").put(protect, updateMessage); // Users can update their own messages
 
 // Admin only routes
 router.use(protect);
@@ -31,7 +32,6 @@ router.route("/stats").get(getMessageStats);
 router
   .route("/:id")
   .get(getMessageById)
-  .put(protect, updateMessage)
   .delete(deleteMessage);
 router.route("/:id/reply").post(protect, addReplyToMessage);
 
