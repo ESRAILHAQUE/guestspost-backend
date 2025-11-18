@@ -7,6 +7,7 @@ import { FundRequest, IFundRequest } from "./fundRequest.model";
 import { User } from "../user/user.model";
 import { AppError } from "@/utils/AppError";
 import { logger } from "@/utils/logger";
+import { sendInvoiceEmail } from "@/utils/email.utils";
 
 export interface CreateFundRequestDto {
   userId: string;
@@ -151,14 +152,70 @@ class FundRequestService {
     data: UpdateFundRequestDto
   ): Promise<IFundRequest> {
     try {
+      // Get the existing fund request to check previous status
+      const existingRequest = await FundRequest.findById(id);
+      if (!existingRequest) {
+        throw new AppError("Fund request not found", 404);
+      }
+
+      const previousStatus = existingRequest.status;
+      const newStatus = data.status;
+
+      // Update fund request
       const fundRequest = await FundRequest.findByIdAndUpdate(
         id,
-        { ...data, updatedAt: new Date() },
+        { 
+          ...data, 
+          ...(newStatus === "paid" && !existingRequest.processedDate && {
+            processedDate: new Date(),
+          }),
+          updatedAt: new Date() 
+        },
         { new: true, runValidators: true }
       );
 
       if (!fundRequest) {
         throw new AppError("Fund request not found", 404);
+      }
+
+      // If status changed to "invoice-sent", send invoice email
+      if (newStatus === "invoice-sent" && previousStatus !== "invoice-sent") {
+        try {
+          // Send invoice email
+          const emailSent = await sendInvoiceEmail({
+            amount: fundRequest.amount,
+            paypalEmail: fundRequest.paypalEmail,
+            userEmail: fundRequest.userEmail,
+            userName: fundRequest.userName,
+            requestDate: fundRequest.requestDate,
+            id: fundRequest._id.toString(),
+          });
+
+          if (emailSent) {
+            logger.success(
+              `Invoice email sent successfully to ${fundRequest.paypalEmail || fundRequest.userEmail} for fund request $${fundRequest.amount}`
+            );
+          } else {
+            logger.warn(
+              `Failed to send invoice email to ${fundRequest.paypalEmail || fundRequest.userEmail}. Please check email configuration.`
+            );
+          }
+        } catch (error: any) {
+          logger.error("Error sending invoice email:", error);
+          // Don't throw error - allow status update to proceed even if email fails
+        }
+      }
+
+      // If status changed to "paid" and it wasn't paid before, update user balance
+      if (newStatus === "paid" && previousStatus !== "paid") {
+        const user = await User.findById(fundRequest.userId);
+        if (user) {
+          user.balance = (user.balance || 0) + fundRequest.amount;
+          await user.save();
+          logger.success(
+            `Fund request marked as paid: $${fundRequest.amount} added to ${fundRequest.userName}'s balance`
+          );
+        }
       }
 
       logger.success(

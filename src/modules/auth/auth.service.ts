@@ -140,17 +140,31 @@ class AuthService {
    * Get current user profile
    */
   async getMe(userId: string) {
-    const user = await User.findById(userId);
+    // Use lean() to get plain JavaScript object, or toObject() to ensure proper serialization
+    const user = await User.findById(userId).lean();
 
     if (!user) {
       throw new UnauthorizedError("User not found");
     }
 
+    // Debug: Log balance to see what's in the database
+    console.log("getMe - User balance from DB:", user.balance);
+    console.log("getMe - Balance type:", typeof user.balance);
+    console.log("getMe - Full user object keys:", Object.keys(user));
+
+    // Ensure balance is a number, default to 0 if undefined/null
+    // Access balance directly from the user object
+    const balance = (user.balance !== undefined && user.balance !== null) 
+      ? Number(user.balance) 
+      : 0;
+
+    console.log("getMe - Final balance being returned:", balance);
+
     return {
       ID: user._id.toString(),
       user_nicename: user.user_nicename,
       user_email: user.user_email,
-      balance: user.balance,
+      balance: balance,
       role: user.role,
       user_status: user.user_status,
       registration_date: user.registration_date,

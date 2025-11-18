@@ -7,6 +7,11 @@ import { Order, IOrder } from "./order.model";
 import { User } from "../user/user.model";
 import { AppError } from "@/utils/AppError";
 import { logger } from "@/utils/logger";
+import {
+  sendOrderConfirmationEmail,
+  sendOrderCompletionEmail,
+  sendOrderStatusUpdateEmail,
+} from "@/utils/email.utils";
 
 export interface CreateOrderDto {
   userId: string;
@@ -68,15 +73,30 @@ class OrderService {
         throw new AppError("User not found", 404);
       }
 
+      // Get order amount (use price or amount field from request)
+      const orderAmount = data.price || (data as any).amount || 0;
+
+      if (orderAmount <= 0) {
+        throw new AppError("Order amount must be greater than 0", 400);
+      }
+
+      // Note: Balance check and deduction will be handled by frontend after order creation
+      // This allows users to submit order details first, then process payment
+
+      // Create order with proper price field (status: pending, payment will be processed separately)
       const order = new Order({
         ...data,
+        price: orderAmount, // Ensure price is set
         date: new Date(),
-        status: "pending",
+        status: "pending", // Order starts as pending, will be updated after payment
       });
 
+      // Save order (without deducting balance)
       await order.save();
 
-      logger.success(`Order created: ${order.item_name} for ${order.userName}`);
+      logger.success(
+        `Order created: ${order.item_name} for ${order.userName}. Amount: $${orderAmount}. Payment will be processed separately.`
+      );
       return order;
     } catch (error: any) {
       if (error instanceof AppError) throw error;
@@ -171,6 +191,15 @@ class OrderService {
    */
   async updateOrder(id: string, data: UpdateOrderDto): Promise<IOrder> {
     try {
+      // Get the previous order to track status changes
+      const previousOrder = await Order.findById(id);
+      if (!previousOrder) {
+        throw new AppError("Order not found", 404);
+      }
+
+      const previousStatus = previousOrder.status;
+
+      // Update the order
       const order = await Order.findByIdAndUpdate(
         id,
         { ...data, updatedAt: new Date() },
@@ -179,6 +208,73 @@ class OrderService {
 
       if (!order) {
         throw new AppError("Order not found", 404);
+      }
+
+      const newStatus = order.status;
+
+      // Send email notifications based on status changes
+      if (newStatus !== previousStatus) {
+        try {
+          // Payment completed: pending -> processing
+          if (previousStatus === "pending" && newStatus === "processing") {
+            await sendOrderConfirmationEmail({
+              id: order._id.toString(),
+              item_name: order.item_name,
+              price: order.price,
+              userName: order.userName,
+              userEmail: order.userEmail,
+              orderDate: order.date || order.createdAt,
+              type: order.type,
+            });
+            logger.success(
+              `Payment confirmation email sent for order ${order._id}`
+            );
+          }
+          // Order completed
+          else if (newStatus === "completed") {
+            await sendOrderCompletionEmail({
+              id: order._id.toString(),
+              item_name: order.item_name,
+              price: order.price,
+              userName: order.userName,
+              userEmail: order.userEmail,
+              orderDate: order.date || order.createdAt,
+              completedAt: order.completedAt || new Date(),
+              completionMessage: order.completionMessage,
+              completionLink: order.completionLink,
+              type: order.type,
+            });
+            logger.success(
+              `Order completion email sent for order ${order._id}`
+            );
+          }
+          // Other status updates (failed, etc.)
+          else if (
+            newStatus === "failed" ||
+            (newStatus === "processing" && previousStatus !== "pending")
+          ) {
+            await sendOrderStatusUpdateEmail({
+              id: order._id.toString(),
+              item_name: order.item_name,
+              price: order.price,
+              userName: order.userName,
+              userEmail: order.userEmail,
+              status: newStatus,
+              orderDate: order.date || order.createdAt,
+              type: order.type,
+              message: data.message,
+            });
+            logger.success(
+              `Order status update email sent for order ${order._id}`
+            );
+          }
+        } catch (emailError: any) {
+          // Log email error but don't fail the order update
+          logger.error(
+            `Failed to send email notification for order ${order._id}:`,
+            emailError
+          );
+        }
       }
 
       logger.success(`Order updated: ${order.item_name}`);
@@ -231,6 +327,29 @@ class OrderService {
 
       if (!order) {
         throw new AppError("Order not found", 404);
+      }
+
+      // Send completion email
+      try {
+        await sendOrderCompletionEmail({
+          id: order._id.toString(),
+          item_name: order.item_name,
+          price: order.price,
+          userName: order.userName,
+          userEmail: order.userEmail,
+          orderDate: order.date || order.createdAt,
+          completedAt: order.completedAt || new Date(),
+          completionMessage: order.completionMessage,
+          completionLink: order.completionLink,
+          type: order.type,
+        });
+        logger.success(`Order completion email sent for order ${order._id}`);
+      } catch (emailError: any) {
+        // Log email error but don't fail the order completion
+        logger.error(
+          `Failed to send completion email for order ${order._id}:`,
+          emailError
+        );
       }
 
       logger.success(`Order completed: ${order.item_name}`);

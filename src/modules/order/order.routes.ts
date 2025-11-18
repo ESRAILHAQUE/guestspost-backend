@@ -22,13 +22,74 @@ const router = Router();
 
 // Validation rules
 const createOrderValidation = [
-  body("userId").isMongoId().withMessage("Invalid user ID"),
-  body("user_id").trim().notEmpty().withMessage("User email is required"),
-  body("userName").trim().notEmpty().withMessage("User name is required"),
-  body("userEmail").isEmail().withMessage("Please provide a valid email"),
-  body("item_name").trim().notEmpty().withMessage("Item name is required"),
-  body("price").isNumeric().withMessage("Price must be a number"),
-  body("type").trim().notEmpty().withMessage("Order type is required"),
+  body("userId")
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      if (value && typeof value === "string" && value.length > 0) {
+        // Check if it's a valid MongoDB ObjectId format
+        if (!/^[0-9a-fA-F]{24}$/.test(value)) {
+          throw new Error("Invalid user ID format");
+        }
+      }
+      return true;
+    }),
+  body("user_id")
+    .optional({ nullable: true, checkFalsy: true })
+    .trim()
+    .notEmpty()
+    .withMessage("User email is required"),
+  body("userName")
+    .trim()
+    .notEmpty()
+    .withMessage("User name is required"),
+  body("userEmail")
+    .optional({ nullable: true, checkFalsy: true })
+    .isEmail()
+    .withMessage("Please provide a valid email"),
+  body("item_name")
+    .optional({ nullable: true, checkFalsy: true })
+    .trim()
+    .notEmpty()
+    .withMessage("Item name is required"),
+  body("title")
+    .optional({ nullable: true, checkFalsy: true })
+    .trim()
+    .notEmpty(),
+  body("price")
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      if (value === undefined || value === null || value === "") {
+        // Price is optional if amount is provided
+        return true;
+      }
+      const numValue = typeof value === "string" ? parseFloat(value) : Number(value);
+      if (isNaN(numValue) || numValue <= 0) {
+        throw new Error("Price must be a positive number");
+      }
+      return true;
+    }),
+  body("amount")
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      if (value !== undefined && value !== null && value !== "") {
+        const numValue = typeof value === "string" ? parseFloat(value) : Number(value);
+        if (isNaN(numValue) || numValue <= 0) {
+          throw new Error("Amount must be a positive number");
+        }
+      }
+      return true;
+    })
+    .custom((value, { req }) => {
+      // At least one of price or amount must be provided
+      if ((!value || value === "") && (!req.body.price || req.body.price === "")) {
+        throw new Error("Either price or amount is required");
+      }
+      return true;
+    }),
+  body("type")
+    .trim()
+    .notEmpty()
+    .withMessage("Order type is required"),
 ];
 
 const updateOrderValidation = [

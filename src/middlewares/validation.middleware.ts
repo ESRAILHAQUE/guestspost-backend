@@ -23,14 +23,17 @@ export const validate = (validations: ValidationChain[]) => {
 
     // Format errors
     const extractedErrors: { [key: string]: string }[] = [];
-    errors
-      .array()
-      .map((err: any) =>
-        extractedErrors.push({ [err.path || err.param]: err.msg })
-      );
+    errors.array().forEach((err: any) => {
+      const field = err.path || err.param || err.location;
+      extractedErrors.push({ [field]: err.msg });
+    });
 
-    // Throw validation error
-    return next(new ValidationError("Validation failed", req.originalUrl));
+    // Log validation errors for debugging
+    console.error("Validation errors:", extractedErrors);
+
+    // Throw validation error with details
+    const errorMessage = `Validation failed: ${extractedErrors.map(e => Object.entries(e).map(([k, v]) => `${k}: ${v}`).join(", ")).join("; ")}`;
+    return next(new ValidationError(errorMessage, req.originalUrl));
   };
 };
 

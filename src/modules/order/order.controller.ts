@@ -20,6 +20,42 @@ export const createOrder = asyncHandler(
   async (req: Request, res: Response, _next: NextFunction) => {
     const orderData: CreateOrderDto = req.body;
 
+    // Log incoming data for debugging
+    console.log("Order creation request data:", JSON.stringify(orderData, null, 2));
+    console.log("Authenticated user:", req.user);
+
+    // Ensure userId is set from authenticated user if not provided
+    if (!orderData.userId && req.user?.userId) {
+      orderData.userId = req.user.userId;
+    }
+
+    // Ensure userEmail is set from authenticated user if not provided
+    if (!orderData.userEmail && req.user?.userEmail) {
+      orderData.userEmail = req.user.userEmail;
+    }
+
+    // Ensure user_id is set (for frontend compatibility)
+    if (!orderData.user_id) {
+      orderData.user_id = orderData.userEmail || req.user?.userEmail || "";
+    }
+
+    // Handle item_name from title if item_name is not provided
+    if (!orderData.item_name && (orderData as any).title) {
+      orderData.item_name = (orderData as any).title;
+    }
+
+    // Ensure price is set from amount if price is not provided
+    if (!orderData.price && (orderData as any).amount) {
+      orderData.price = parseFloat((orderData as any).amount) || 0;
+    }
+
+    // Ensure userName is set if not provided
+    if (!orderData.userName && req.user?.userName) {
+      orderData.userName = req.user.userName;
+    }
+
+    console.log("Processed order data:", JSON.stringify(orderData, null, 2));
+
     const order = await orderService.createOrder(orderData);
 
     ApiResponse.created(res, order, "Order created successfully");

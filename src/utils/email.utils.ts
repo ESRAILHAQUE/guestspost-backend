@@ -1,0 +1,601 @@
+/**
+ * Email Utility
+ * Handles email sending using nodemailer
+ */
+
+import nodemailer from "nodemailer";
+import { config } from "@/config/env.config";
+import { logger } from "./logger";
+
+/**
+ * Create email transporter
+ */
+const createTransporter = () => {
+  // If email credentials are not configured, return null
+  if (!config.email.user || !config.email.password) {
+    logger.warn("Email credentials not configured. Email sending disabled.");
+    return null;
+  }
+
+  return nodemailer.createTransport({
+    host: config.email.host,
+    port: config.email.port,
+    secure: config.email.port === 465, // true for 465, false for other ports
+    auth: {
+      user: config.email.user,
+      pass: config.email.password,
+    },
+  });
+};
+
+/**
+ * Send email
+ */
+export const sendEmail = async (
+  to: string,
+  subject: string,
+  html: string,
+  text?: string
+): Promise<boolean> => {
+  try {
+    const transporter = createTransporter();
+    if (!transporter) {
+      logger.warn(`Email not sent to ${to}: Email service not configured`);
+      return false;
+    }
+
+    // Handle EMAIL_FROM format: "Display Name <email@example.com>" or just "email@example.com"
+    const fromAddress = config.email.from.includes("<") 
+      ? config.email.from 
+      : `"GuestPost Now" <${config.email.from}>`;
+
+    const mailOptions = {
+      from: fromAddress,
+      to,
+      subject,
+      text: text || html.replace(/<[^>]*>/g, ""), // Plain text version
+      html,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    logger.success(`Email sent successfully to ${to}: ${info.messageId}`);
+    return true;
+  } catch (error: any) {
+    logger.error(`Failed to send email to ${to}:`, error);
+    return false;
+  }
+};
+
+/**
+ * Send invoice email for fund request
+ */
+export const sendInvoiceEmail = async (fundRequest: {
+  amount: number;
+  paypalEmail?: string;
+  userEmail: string;
+  userName: string;
+  requestDate: Date;
+  id: string;
+}): Promise<boolean> => {
+  const recipientEmail = fundRequest.paypalEmail || fundRequest.userEmail;
+  const formattedDate = new Date(fundRequest.requestDate).toLocaleDateString(
+    "en-US",
+    {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }
+  );
+
+  const subject = `Invoice for $${fundRequest.amount} - Fund Request`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Invoice - Fund Request</title>
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="color: white; margin: 0;">GuestPost Now</h1>
+      </div>
+      
+      <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e0e0e0;">
+        <h2 style="color: #667eea; margin-top: 0;">Invoice for Fund Request</h2>
+        
+        <p>Dear ${fundRequest.userName},</p>
+        
+        <p>Thank you for your fund request. Please find the invoice details below:</p>
+        
+        <div style="background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #667eea;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Request ID:</td>
+              <td style="padding: 8px 0; text-align: right;">${fundRequest.id}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Amount:</td>
+              <td style="padding: 8px 0; text-align: right; font-size: 18px; color: #667eea; font-weight: bold;">$${fundRequest.amount.toLocaleString()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Request Date:</td>
+              <td style="padding: 8px 0; text-align: right;">${formattedDate}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Payment Email:</td>
+              <td style="padding: 8px 0; text-align: right;">${recipientEmail}</td>
+            </tr>
+          </table>
+        </div>
+        
+        <div style="background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107; margin: 20px 0;">
+          <p style="margin: 0; font-weight: bold; color: #856404;">📧 Payment Instructions:</p>
+          <p style="margin: 10px 0 0 0; color: #856404;">
+            Please send the payment of <strong>$${fundRequest.amount.toLocaleString()}</strong> to the PayPal email address: <strong>${recipientEmail}</strong>
+          </p>
+        </div>
+        
+        <p>Once payment is received, your account balance will be updated automatically.</p>
+        
+        <p>If you have any questions, please don't hesitate to contact our support team.</p>
+        
+        <p style="margin-top: 30px;">
+          Best regards,<br>
+          <strong>GuestPost Now Team</strong>
+        </p>
+        
+        <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">
+        
+        <p style="font-size: 12px; color: #999; text-align: center; margin: 0;">
+          This is an automated email. Please do not reply to this message.
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const text = `
+Invoice for Fund Request
+
+Dear ${fundRequest.userName},
+
+Thank you for your fund request. Please find the invoice details below:
+
+Request ID: ${fundRequest.id}
+Amount: $${fundRequest.amount.toLocaleString()}
+Request Date: ${formattedDate}
+Payment Email: ${recipientEmail}
+
+Payment Instructions:
+Please send the payment of $${fundRequest.amount.toLocaleString()} to the PayPal email address: ${recipientEmail}
+
+Once payment is received, your account balance will be updated automatically.
+
+If you have any questions, please don't hesitate to contact our support team.
+
+Best regards,
+GuestPost Now Team
+  `;
+
+  return await sendEmail(recipientEmail, subject, html, text);
+};
+
+/**
+ * Send order confirmation email (payment completed)
+ */
+export const sendOrderConfirmationEmail = async (order: {
+  id: string;
+  item_name: string;
+  price: number;
+  userName: string;
+  userEmail: string;
+  orderDate: Date;
+  type?: string;
+}): Promise<boolean> => {
+  const formattedDate = new Date(order.orderDate).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const subject = `Order Confirmed - ${order.item_name}`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Order Confirmed</title>
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="color: white; margin: 0;">GuestPost Now</h1>
+      </div>
+      
+      <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e0e0e0;">
+        <h2 style="color: #667eea; margin-top: 0;">✅ Payment Confirmed!</h2>
+        
+        <p>Dear ${order.userName},</p>
+        
+        <p>Thank you for your order! Your payment has been successfully processed.</p>
+        
+        <div style="background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #28a745;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Order ID:</td>
+              <td style="padding: 8px 0; text-align: right;">${order.id}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Service:</td>
+              <td style="padding: 8px 0; text-align: right;">${order.item_name}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Order Type:</td>
+              <td style="padding: 8px 0; text-align: right;">${order.type || "N/A"}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Amount Paid:</td>
+              <td style="padding: 8px 0; text-align: right; font-size: 18px; color: #28a745; font-weight: bold;">$${order.price.toLocaleString()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Order Date:</td>
+              <td style="padding: 8px 0; text-align: right;">${formattedDate}</td>
+            </tr>
+          </table>
+        </div>
+        
+        <div style="background: #d4edda; padding: 15px; border-radius: 5px; border-left: 4px solid #28a745; margin: 20px 0;">
+          <p style="margin: 0; font-weight: bold; color: #155724;">📦 Order Status: Processing</p>
+          <p style="margin: 10px 0 0 0; color: #155724;">
+            Your order is now being processed. We'll notify you once it's completed.
+          </p>
+        </div>
+        
+        <p>You can track your order status from your dashboard at any time.</p>
+        
+        <p>If you have any questions, please don't hesitate to contact our support team.</p>
+        
+        <p style="margin-top: 30px;">
+          Best regards,<br>
+          <strong>GuestPost Now Team</strong>
+        </p>
+        
+        <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">
+        
+        <p style="font-size: 12px; color: #999; text-align: center; margin: 0;">
+          This is an automated email. Please do not reply to this message.
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const text = `
+Order Confirmed - Payment Successful
+
+Dear ${order.userName},
+
+Thank you for your order! Your payment has been successfully processed.
+
+Order ID: ${order.id}
+Service: ${order.item_name}
+Order Type: ${order.type || "N/A"}
+Amount Paid: $${order.price.toLocaleString()}
+Order Date: ${formattedDate}
+
+Order Status: Processing
+Your order is now being processed. We'll notify you once it's completed.
+
+You can track your order status from your dashboard at any time.
+
+If you have any questions, please don't hesitate to contact our support team.
+
+Best regards,
+GuestPost Now Team
+  `;
+
+  return await sendEmail(order.userEmail, subject, html, text);
+};
+
+/**
+ * Send order completion email
+ */
+export const sendOrderCompletionEmail = async (order: {
+  id: string;
+  item_name: string;
+  price: number;
+  userName: string;
+  userEmail: string;
+  orderDate: Date;
+  completedAt: Date;
+  completionMessage?: string;
+  completionLink?: string;
+  type?: string;
+}): Promise<boolean> => {
+  const formattedOrderDate = new Date(order.orderDate).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  const formattedCompletedDate = new Date(order.completedAt).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const subject = `Order Completed - ${order.item_name}`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Order Completed</title>
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="color: white; margin: 0;">GuestPost Now</h1>
+      </div>
+      
+      <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e0e0e0;">
+        <h2 style="color: #28a745; margin-top: 0;">🎉 Order Completed!</h2>
+        
+        <p>Dear ${order.userName},</p>
+        
+        <p>Great news! Your order has been completed successfully.</p>
+        
+        <div style="background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #28a745;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Order ID:</td>
+              <td style="padding: 8px 0; text-align: right;">${order.id}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Service:</td>
+              <td style="padding: 8px 0; text-align: right;">${order.item_name}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Order Type:</td>
+              <td style="padding: 8px 0; text-align: right;">${order.type || "N/A"}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Amount Paid:</td>
+              <td style="padding: 8px 0; text-align: right; font-size: 18px; color: #28a745; font-weight: bold;">$${order.price.toLocaleString()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Order Date:</td>
+              <td style="padding: 8px 0; text-align: right;">${formattedOrderDate}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Completed Date:</td>
+              <td style="padding: 8px 0; text-align: right;">${formattedCompletedDate}</td>
+            </tr>
+          </table>
+        </div>
+        
+        ${order.completionMessage ? `
+        <div style="background: #d1ecf1; padding: 15px; border-radius: 5px; border-left: 4px solid #0c5460; margin: 20px 0;">
+          <p style="margin: 0; font-weight: bold; color: #0c5460;">📝 Completion Message:</p>
+          <p style="margin: 10px 0 0 0; color: #0c5460;">${order.completionMessage}</p>
+        </div>
+        ` : ""}
+        
+        ${order.completionLink ? `
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${order.completionLink}" style="display: inline-block; background: #28a745; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">View Completed Work</a>
+        </div>
+        ` : ""}
+        
+        <div style="background: #d4edda; padding: 15px; border-radius: 5px; border-left: 4px solid #28a745; margin: 20px 0;">
+          <p style="margin: 0; font-weight: bold; color: #155724;">✅ Order Status: Completed</p>
+          <p style="margin: 10px 0 0 0; color: #155724;">
+            Your order has been successfully completed. Thank you for choosing GuestPost Now!
+          </p>
+        </div>
+        
+        <p>If you have any questions or need further assistance, please don't hesitate to contact our support team.</p>
+        
+        <p style="margin-top: 30px;">
+          Best regards,<br>
+          <strong>GuestPost Now Team</strong>
+        </p>
+        
+        <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">
+        
+        <p style="font-size: 12px; color: #999; text-align: center; margin: 0;">
+          This is an automated email. Please do not reply to this message.
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const text = `
+Order Completed
+
+Dear ${order.userName},
+
+Great news! Your order has been completed successfully.
+
+Order ID: ${order.id}
+Service: ${order.item_name}
+Order Type: ${order.type || "N/A"}
+Amount Paid: $${order.price.toLocaleString()}
+Order Date: ${formattedOrderDate}
+Completed Date: ${formattedCompletedDate}
+
+${order.completionMessage ? `Completion Message: ${order.completionMessage}\n` : ""}
+${order.completionLink ? `View Completed Work: ${order.completionLink}\n` : ""}
+
+Order Status: Completed
+Your order has been successfully completed. Thank you for choosing GuestPost Now!
+
+If you have any questions or need further assistance, please don't hesitate to contact our support team.
+
+Best regards,
+GuestPost Now Team
+  `;
+
+  return await sendEmail(order.userEmail, subject, html, text);
+};
+
+/**
+ * Send order status update email (for processing, failed, cancelled)
+ */
+export const sendOrderStatusUpdateEmail = async (order: {
+  id: string;
+  item_name: string;
+  price: number;
+  userName: string;
+  userEmail: string;
+  status: string;
+  orderDate: Date;
+  type?: string;
+  message?: string;
+}): Promise<boolean> => {
+  const formattedDate = new Date(order.orderDate).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const statusConfig: { [key: string]: { color: string; icon: string; title: string; bgColor: string; textColor: string } } = {
+    processing: {
+      color: "#007bff",
+      icon: "⚙️",
+      title: "Order Processing",
+      bgColor: "#cce5ff",
+      textColor: "#004085",
+    },
+    failed: {
+      color: "#dc3545",
+      icon: "❌",
+      title: "Order Failed",
+      bgColor: "#f8d7da",
+      textColor: "#721c24",
+    },
+    cancelled: {
+      color: "#6c757d",
+      icon: "🚫",
+      title: "Order Cancelled",
+      bgColor: "#e2e3e5",
+      textColor: "#383d41",
+    },
+  };
+
+  const config = statusConfig[order.status.toLowerCase()] || {
+    color: "#6c757d",
+    icon: "📋",
+    title: "Order Status Updated",
+    bgColor: "#e2e3e5",
+    textColor: "#383d41",
+  };
+
+  const subject = `${config.title} - ${order.item_name}`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Order Status Update</title>
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, ${config.color} 0%, ${config.color}dd 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="color: white; margin: 0;">GuestPost Now</h1>
+      </div>
+      
+      <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e0e0e0;">
+        <h2 style="color: ${config.color}; margin-top: 0;">${config.icon} ${config.title}</h2>
+        
+        <p>Dear ${order.userName},</p>
+        
+        <p>Your order status has been updated.</p>
+        
+        <div style="background: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid ${config.color};">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Order ID:</td>
+              <td style="padding: 8px 0; text-align: right;">${order.id}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Service:</td>
+              <td style="padding: 8px 0; text-align: right;">${order.item_name}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Order Type:</td>
+              <td style="padding: 8px 0; text-align: right;">${order.type || "N/A"}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Amount:</td>
+              <td style="padding: 8px 0; text-align: right; font-size: 18px; color: ${config.color}; font-weight: bold;">$${order.price.toLocaleString()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Order Date:</td>
+              <td style="padding: 8px 0; text-align: right;">${formattedDate}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: bold;">Status:</td>
+              <td style="padding: 8px 0; text-align: right; font-weight: bold; color: ${config.color}; text-transform: capitalize;">${order.status}</td>
+            </tr>
+          </table>
+        </div>
+        
+        ${order.message ? `
+        <div style="background: ${config.bgColor}; padding: 15px; border-radius: 5px; border-left: 4px solid ${config.color}; margin: 20px 0;">
+          <p style="margin: 0; font-weight: bold; color: ${config.textColor};">📝 Message:</p>
+          <p style="margin: 10px 0 0 0; color: ${config.textColor};">${order.message}</p>
+        </div>
+        ` : ""}
+        
+        <p>You can track your order status from your dashboard at any time.</p>
+        
+        <p>If you have any questions, please don't hesitate to contact our support team.</p>
+        
+        <p style="margin-top: 30px;">
+          Best regards,<br>
+          <strong>GuestPost Now Team</strong>
+        </p>
+        
+        <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">
+        
+        <p style="font-size: 12px; color: #999; text-align: center; margin: 0;">
+          This is an automated email. Please do not reply to this message.
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const text = `
+${config.title}
+
+Dear ${order.userName},
+
+Your order status has been updated.
+
+Order ID: ${order.id}
+Service: ${order.item_name}
+Order Type: ${order.type || "N/A"}
+Amount: $${order.price.toLocaleString()}
+Order Date: ${formattedDate}
+Status: ${order.status}
+
+${order.message ? `Message: ${order.message}\n` : ""}
+
+You can track your order status from your dashboard at any time.
+
+If you have any questions, please don't hesitate to contact our support team.
+
+Best regards,
+GuestPost Now Team
+  `;
+
+  return await sendEmail(order.userEmail, subject, html, text);
+};
+
