@@ -14,6 +14,8 @@ import {
   resetPassword,
   changePassword,
   refreshToken,
+  verifyEmail,
+  googleAuth,
 } from "./auth.controller";
 import { protect } from "@/middlewares/auth.middleware";
 import { validate } from "@/middlewares/validation.middleware";
@@ -114,8 +116,10 @@ const refreshTokenValidation = [
 // Routes
 router.post("/register", validate(registerValidation), register);
 router.post("/login", validate(loginValidation), login);
+router.post("/google", googleAuth);
 router.post("/logout", protect, logout);
 router.get("/me", protect, getMe);
+router.get("/verify-email", verifyEmail);
 router.post(
   "/forgot-password",
   validate(forgotPasswordValidation),

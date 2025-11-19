@@ -32,6 +32,7 @@ export interface IUser extends Document {
   // Instance methods
   comparePassword(candidatePassword: string): Promise<boolean>;
   generatePasswordResetToken(): string;
+  generateEmailVerificationToken(): string;
 }
 
 /**
@@ -169,6 +170,17 @@ userSchema.methods.generatePasswordResetToken = function (): string {
   this.passwordResetToken = resetToken;
   this.passwordResetExpires = new Date(Date.now() + 3600000); // 1 hour
   return resetToken;
+};
+
+/**
+ * Instance method to generate email verification token
+ */
+userSchema.methods.generateEmailVerificationToken = function (): string {
+  const verificationToken = Math.random().toString(36).substring(2, 15) + 
+    Math.random().toString(36).substring(2, 15) + 
+    Date.now().toString(36);
+  this.emailVerificationToken = verificationToken;
+  return verificationToken;
 };
 
 /**

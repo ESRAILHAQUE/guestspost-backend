@@ -11,6 +11,8 @@ import {
   ConflictError,
 } from "@/utils/AppError";
 import { validatePasswordStrength } from "@/utils/password.utils";
+import { sendVerificationEmail } from "@/utils/email.utils";
+import { config } from "@/config/env.config";
 
 interface RegisterDto {
   user_nicename: string;
@@ -64,6 +66,23 @@ class AuthService {
       registration_date: new Date(),
     });
 
+    // Generate email verification token
+    const verificationToken = user.generateEmailVerificationToken();
+    await user.save({ validateBeforeSave: false });
+
+    // Send verification email
+    try {
+      await sendVerificationEmail({
+        userEmail: user.user_email,
+        userName: user.user_nicename,
+        verificationToken,
+        frontendUrl: config.app.frontendUrl,
+      });
+    } catch (error) {
+      console.error("Failed to send verification email:", error);
+      // Don't fail registration if email fails
+    }
+
     // Generate tokens
     const tokens = generateTokens({
       userId: user._id.toString(),
@@ -78,6 +97,7 @@ class AuthService {
         user_email: user.user_email,
         balance: user.balance,
         role: user.role,
+        isEmailVerified: user.isEmailVerified,
       },
       tokens,
     };
@@ -254,6 +274,82 @@ class AuthService {
     await user.save();
 
     return { message: "Password changed successfully" };
+  }
+
+  /**
+   * Google OAuth signup/login
+   */
+  async googleAuth(googleData: {
+    email: string;
+    name: string;
+    googleId: string;
+    picture?: string;
+  }) {
+    const { email, name, googleId, picture } = googleData;
+
+    // Check if user already exists
+    let user = await User.findOne({ user_email: email });
+
+    if (user) {
+      // User exists, update last login
+      user.lastLogin = new Date();
+      // If email not verified, mark as verified for Google users
+      if (!user.isEmailVerified) {
+        user.isEmailVerified = true;
+      }
+      await user.save();
+    } else {
+      // Create new user
+      user = await User.create({
+        user_nicename: name,
+        user_email: email,
+        user_pass: googleId, // Use googleId as password (will be hashed)
+        registration_date: new Date(),
+        isEmailVerified: true, // Google emails are pre-verified
+        avatar: picture,
+        lastLogin: new Date(),
+      });
+    }
+
+    // Generate tokens
+    const tokens = generateTokens({
+      userId: user._id.toString(),
+      email: user.user_email,
+      role: user.role,
+    });
+
+    return {
+      user: {
+        ID: user._id.toString(),
+        user_nicename: user.user_nicename,
+        user_email: user.user_email,
+        balance: user.balance,
+        role: user.role,
+        isEmailVerified: user.isEmailVerified,
+      },
+      tokens,
+    };
+  }
+
+  /**
+   * Verify email address
+   */
+  async verifyEmail(token: string) {
+    // Find user by verification token
+    const user = await User.findOne({
+      emailVerificationToken: token,
+    }).select("+emailVerificationToken");
+
+    if (!user) {
+      throw new BadRequestError("Invalid or expired verification token");
+    }
+
+    // Mark email as verified
+    user.isEmailVerified = true;
+    user.emailVerificationToken = undefined;
+    await user.save();
+
+    return { message: "Email verified successfully" };
   }
 
   /**

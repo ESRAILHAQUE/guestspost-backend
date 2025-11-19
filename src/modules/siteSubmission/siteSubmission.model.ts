@@ -7,9 +7,10 @@ export interface ISiteSubmission extends Document {
   websites: string[];
   isOwner: boolean;
   csvFile?: {
-    name: string;
-    data: string;
-    type: string;
+    fileName: string;
+    filePath: string; // Path on VPS
+    fileSize?: number;
+    mimeType?: string;
   };
   status: "pending" | "approved" | "rejected";
   submittedAt: Date;
@@ -46,9 +47,8 @@ const siteSubmissionSchema = new Schema<ISiteSubmission>(
       default: false,
     },
     csvFile: {
-      name: String,
-      data: String,
-      type: String,
+      type: Schema.Types.Mixed,
+      required: false,
     },
     status: {
       type: String,

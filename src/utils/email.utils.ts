@@ -599,3 +599,375 @@ GuestPost Now Team
   return await sendEmail(order.userEmail, subject, html, text);
 };
 
+/**
+ * Send email verification email
+ */
+export const sendVerificationEmail = async (user: {
+  userEmail: string;
+  userName: string;
+  verificationToken: string;
+  frontendUrl?: string;
+}): Promise<boolean> => {
+  const frontendUrl = user.frontendUrl || "http://localhost:3000";
+  const verificationUrl = `${frontendUrl}/verify-email?token=${user.verificationToken}`;
+
+  const subject = "Verify Your Email Address - GuestPost Now";
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Verify Your Email</title>
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="color: white; margin: 0;">GuestPost Now</h1>
+      </div>
+      
+      <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e0e0e0;">
+        <h2 style="color: #667eea; margin-top: 0;">📧 Verify Your Email Address</h2>
+        
+        <p>Dear ${user.userName},</p>
+        
+        <p>Thank you for signing up with GuestPost Now! To complete your registration, please verify your email address by clicking the button below:</p>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${verificationUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">Verify Email Address</a>
+        </div>
+        
+        <p style="color: #666; font-size: 14px;">Or copy and paste this link into your browser:</p>
+        <p style="color: #667eea; font-size: 12px; word-break: break-all; background: #f0f0f0; padding: 10px; border-radius: 5px;">${verificationUrl}</p>
+        
+        <div style="background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107; margin: 20px 0;">
+          <p style="margin: 0; font-weight: bold; color: #856404;">⏰ Important:</p>
+          <p style="margin: 10px 0 0 0; color: #856404;">
+            This verification link will expire in 24 hours. If you didn't create an account with GuestPost Now, please ignore this email.
+          </p>
+        </div>
+        
+        <p>If you have any questions, please don't hesitate to contact our support team.</p>
+        
+        <p style="margin-top: 30px;">
+          Best regards,<br>
+          <strong>GuestPost Now Team</strong>
+        </p>
+        
+        <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">
+        
+        <p style="font-size: 12px; color: #999; text-align: center; margin: 0;">
+          This is an automated email. Please do not reply to this message.
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const text = `
+Verify Your Email Address - GuestPost Now
+
+Dear ${user.userName},
+
+Thank you for signing up with GuestPost Now! To complete your registration, please verify your email address by clicking the link below:
+
+${verificationUrl}
+
+Important: This verification link will expire in 24 hours. If you didn't create an account with GuestPost Now, please ignore this email.
+
+If you have any questions, please don't hesitate to contact our support team.
+
+Best regards,
+GuestPost Now Team
+  `;
+
+  return await sendEmail(user.userEmail, subject, html, text);
+};
+
+/**
+ * Send site submission approval email
+ */
+export const sendSiteSubmissionApprovalEmail = async (data: {
+  userEmail: string;
+  userName: string;
+  websites: string[];
+  frontendUrl?: string;
+  adminNotes?: string;
+}): Promise<boolean> => {
+  const frontendUrl = data.frontendUrl || "http://localhost:3000";
+  const websitesList = data.websites.map((website) => `• ${website}`).join("<br>");
+
+  const subject = "🎉 Your Site Submission Has Been Approved - GuestPost Now";
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Site Submission Approved</title>
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="color: white; margin: 0;">✅ Site Submission Approved</h1>
+      </div>
+      
+      <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e0e0e0;">
+        <h2 style="color: #10b981; margin-top: 0;">Congratulations, ${data.userName}!</h2>
+        
+        <p>We're excited to inform you that your site submission has been <strong>approved</strong>!</p>
+        
+        <div style="background: #d1fae5; padding: 20px; border-radius: 5px; border-left: 4px solid #10b981; margin: 20px 0;">
+          <p style="margin: 0; font-weight: bold; color: #065f46;">📋 Approved Websites:</p>
+          <div style="margin-top: 10px; color: #047857;">
+            ${websitesList}
+          </div>
+        </div>
+        
+        ${data.adminNotes ? `
+        <div style="background: #fef3c7; padding: 15px; border-radius: 5px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+          <p style="margin: 0; font-weight: bold; color: #92400e;">📝 Admin Notes:</p>
+          <p style="margin: 10px 0 0 0; color: #78350f;">${data.adminNotes}</p>
+        </div>
+        ` : ''}
+        
+        <p>Your websites are now live on our platform and available for guest post opportunities. You can start receiving orders and growing your business!</p>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${frontendUrl}/dashboard" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">View Dashboard</a>
+        </div>
+        
+        <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
+        
+        <p style="margin-top: 30px;">
+          Best regards,<br>
+          <strong>GuestPost Now Team</strong>
+        </p>
+        
+        <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">
+        
+        <p style="font-size: 12px; color: #999; text-align: center; margin: 0;">
+          This is an automated email. Please do not reply to this message.
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const text = `
+Site Submission Approved - GuestPost Now
+
+Congratulations, ${data.userName}!
+
+We're excited to inform you that your site submission has been approved!
+
+Approved Websites:
+${data.websites.map((website) => `• ${website}`).join("\n")}
+
+${data.adminNotes ? `Admin Notes: ${data.adminNotes}\n\n` : ''}
+Your websites are now live on our platform and available for guest post opportunities. You can start receiving orders and growing your business!
+
+Visit your dashboard: ${frontendUrl}/dashboard
+
+If you have any questions or need assistance, please don't hesitate to contact our support team.
+
+Best regards,
+GuestPost Now Team
+  `;
+
+  return await sendEmail(data.userEmail, subject, html, text);
+};
+
+/**
+ * Send site submission rejection email
+ */
+export const sendSiteSubmissionRejectionEmail = async (data: {
+  userEmail: string;
+  userName: string;
+  websites: string[];
+  frontendUrl?: string;
+  adminNotes?: string;
+}): Promise<boolean> => {
+  const frontendUrl = data.frontendUrl || "http://localhost:3000";
+  const websitesList = data.websites.map((website) => `• ${website}`).join("<br>");
+
+  const subject = "Site Submission Status Update - GuestPost Now";
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Site Submission Status</title>
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="color: white; margin: 0;">Site Submission Status Update</h1>
+      </div>
+      
+      <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e0e0e0;">
+        <h2 style="color: #ef4444; margin-top: 0;">Dear ${data.userName},</h2>
+        
+        <p>We regret to inform you that your site submission has been <strong>rejected</strong>.</p>
+        
+        <div style="background: #fee2e2; padding: 20px; border-radius: 5px; border-left: 4px solid #ef4444; margin: 20px 0;">
+          <p style="margin: 0; font-weight: bold; color: #991b1b;">📋 Submitted Websites:</p>
+          <div style="margin-top: 10px; color: #7f1d1d;">
+            ${websitesList}
+          </div>
+        </div>
+        
+        ${data.adminNotes ? `
+        <div style="background: #fef3c7; padding: 15px; border-radius: 5px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+          <p style="margin: 0; font-weight: bold; color: #92400e;">📝 Reason for Rejection:</p>
+          <p style="margin: 10px 0 0 0; color: #78350f;">${data.adminNotes}</p>
+        </div>
+        ` : `
+        <div style="background: #fef3c7; padding: 15px; border-radius: 5px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+          <p style="margin: 0; font-weight: bold; color: #92400e;">📝 Note:</p>
+          <p style="margin: 10px 0 0 0; color: #78350f;">Your submission did not meet our current quality standards. Please review our guidelines and feel free to submit again after making the necessary improvements.</p>
+        </div>
+        `}
+        
+        <p>We encourage you to review our submission guidelines and resubmit your websites after addressing the concerns mentioned above.</p>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${frontendUrl}/list-your-site" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">Submit Again</a>
+        </div>
+        
+        <p>If you have any questions or need clarification, please don't hesitate to contact our support team. We're here to help!</p>
+        
+        <p style="margin-top: 30px;">
+          Best regards,<br>
+          <strong>GuestPost Now Team</strong>
+        </p>
+        
+        <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">
+        
+        <p style="font-size: 12px; color: #999; text-align: center; margin: 0;">
+          This is an automated email. Please do not reply to this message.
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const text = `
+Site Submission Status Update - GuestPost Now
+
+Dear ${data.userName},
+
+We regret to inform you that your site submission has been rejected.
+
+Submitted Websites:
+${data.websites.map((website) => `• ${website}`).join("\n")}
+
+${data.adminNotes ? `Reason for Rejection: ${data.adminNotes}\n\n` : 'Note: Your submission did not meet our current quality standards. Please review our guidelines and feel free to submit again after making the necessary improvements.\n\n'}
+We encourage you to review our submission guidelines and resubmit your websites after addressing the concerns mentioned above.
+
+Submit again: ${frontendUrl}/list-your-site
+
+If you have any questions or need clarification, please don't hesitate to contact our support team. We're here to help!
+
+Best regards,
+GuestPost Now Team
+  `;
+
+  return await sendEmail(data.userEmail, subject, html, text);
+};
+
+/**
+ * Send site submission received email
+ */
+export const sendSiteSubmissionReceivedEmail = async (data: {
+  userEmail: string;
+  userName: string;
+  websites: string[];
+  frontendUrl?: string;
+}): Promise<boolean> => {
+  const frontendUrl = data.frontendUrl || "http://localhost:3000";
+  const websitesList = data.websites.map((website) => `• ${website}`).join("<br>");
+
+  const subject = "Site Submission Received - GuestPost Now";
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Site Submission Received</title>
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="color: white; margin: 0;">📨 Site Submission Received</h1>
+      </div>
+      
+      <div style="background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; border: 1px solid #e0e0e0;">
+        <h2 style="color: #3b82f6; margin-top: 0;">Thank you, ${data.userName}!</h2>
+        
+        <p>We've successfully received your site submission and our team is currently reviewing it.</p>
+        
+        <div style="background: #dbeafe; padding: 20px; border-radius: 5px; border-left: 4px solid #3b82f6; margin: 20px 0;">
+          <p style="margin: 0; font-weight: bold; color: #1e40af;">📋 Submitted Websites:</p>
+          <div style="margin-top: 10px; color: #1e3a8a;">
+            ${websitesList}
+          </div>
+        </div>
+        
+        <div style="background: #fef3c7; padding: 15px; border-radius: 5px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+          <p style="margin: 0; font-weight: bold; color: #92400e;">⏰ What's Next?</p>
+          <p style="margin: 10px 0 0 0; color: #78350f;">
+            Our review team will carefully evaluate your submission. You'll receive an email notification once the review is complete, typically within 24-48 hours.
+          </p>
+        </div>
+        
+        <p>In the meantime, you can check the status of your submission in your dashboard.</p>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${frontendUrl}/dashboard" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">View Dashboard</a>
+        </div>
+        
+        <p>If you have any questions, please don't hesitate to contact our support team.</p>
+        
+        <p style="margin-top: 30px;">
+          Best regards,<br>
+          <strong>GuestPost Now Team</strong>
+        </p>
+        
+        <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">
+        
+        <p style="font-size: 12px; color: #999; text-align: center; margin: 0;">
+          This is an automated email. Please do not reply to this message.
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const text = `
+Site Submission Received - GuestPost Now
+
+Thank you, ${data.userName}!
+
+We've successfully received your site submission and our team is currently reviewing it.
+
+Submitted Websites:
+${data.websites.map((website) => `• ${website}`).join("\n")}
+
+What's Next?
+Our review team will carefully evaluate your submission. You'll receive an email notification once the review is complete, typically within 24-48 hours.
+
+In the meantime, you can check the status of your submission in your dashboard.
+
+Visit your dashboard: ${frontendUrl}/dashboard
+
+If you have any questions, please don't hesitate to contact our support team.
+
+Best regards,
+GuestPost Now Team
+  `;
+
+  return await sendEmail(data.userEmail, subject, html, text);
+};

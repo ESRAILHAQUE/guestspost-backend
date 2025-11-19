@@ -117,6 +117,42 @@ export const changePassword = asyncHandler(
 );
 
 /**
+ * @desc    Google OAuth signup/login
+ * @route   POST /api/v1/auth/google
+ * @access  Public
+ */
+export const googleAuth = asyncHandler(
+  async (req: Request, res: Response, _next: NextFunction) => {
+    const result = await authService.googleAuth(req.body);
+    
+    // Set cookie
+    res.cookie("token", result.tokens.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    return ApiResponse.success(res, result, "Google authentication successful");
+  }
+);
+
+/**
+ * @desc    Verify email
+ * @route   GET /api/v1/auth/verify-email
+ * @access  Public
+ */
+export const verifyEmail = asyncHandler(
+  async (req: Request, res: Response, _next: NextFunction) => {
+    const { token } = req.query;
+    if (!token || typeof token !== "string") {
+      return ApiResponse.badRequest(res, "Verification token is required");
+    }
+    const result = await authService.verifyEmail(token);
+    return ApiResponse.success(res, result, "Email verified successfully");
+  }
+);
+
+/**
  * @desc    Refresh token
  * @route   POST /api/v1/auth/refresh-token
  * @access  Public

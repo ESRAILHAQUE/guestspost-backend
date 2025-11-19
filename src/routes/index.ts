@@ -18,6 +18,7 @@ import { activityRoutes } from "@/modules/activity/activity.routes";
 import { messageRoutes } from "@/modules/message/message.routes";
 import serviceRoutes from "@/modules/service/service.routes";
 import servicePackageRoutes from "@/modules/servicePackage/servicePackage.routes";
+import { fileRoutes } from "@/routes/files.routes";
 
 const router = Router();
 
@@ -36,6 +37,7 @@ router.use("/reviews", reviewRoutes);
 router.use("/activities", activityRoutes);
 router.use("/messages", messageRoutes);
 router.use("/admin", adminRoutes);
+router.use("/files", fileRoutes);
 
 // Health check route
 router.get("/health", (_req, res) => {

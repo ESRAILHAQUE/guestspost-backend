@@ -11,6 +11,7 @@ import {
 import { protect, authorize } from "@/middlewares";
 import { validate } from "@/middlewares";
 import { body, param } from "express-validator";
+import { uploadCSV } from "@/middlewares/upload.middleware";
 
 const router = Router();
 
@@ -42,6 +43,7 @@ const userEmailValidation = [
 // Public routes (for site submissions)
 router.post(
   "/",
+  uploadCSV, // Handle file upload
   validate(createSiteSubmissionValidation),
   createSiteSubmission
 );

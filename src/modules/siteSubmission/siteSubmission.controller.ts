@@ -7,10 +7,37 @@ import {
 } from "./siteSubmission.service";
 import { asyncHandler } from "@/middlewares";
 import { ApiResponse } from "@/utils/apiResponse";
+import { saveFileToVPS } from "@/utils/file.utils";
 
 export const createSiteSubmission = asyncHandler(
   async (req: Request, res: Response, _next: NextFunction) => {
-    const siteSubmissionData: CreateSiteSubmissionDto = req.body;
+    // Parse FormData fields
+    const siteSubmissionData: CreateSiteSubmissionDto = {
+      userId: req.body.userId,
+      userName: req.body.userName,
+      userEmail: req.body.userEmail,
+      websites: typeof req.body.websites === "string" 
+        ? JSON.parse(req.body.websites) 
+        : req.body.websites,
+      isOwner: req.body.isOwner === "true" || req.body.isOwner === true,
+    };
+
+    // Handle file upload if present
+    if (req.file) {
+      try {
+        const fileInfo = await saveFileToVPS(req.file, "site-submissions");
+        siteSubmissionData.csvFile = {
+          fileName: fileInfo.fileName,
+          filePath: fileInfo.filePath,
+          fileSize: req.file.size,
+          mimeType: req.file.mimetype,
+        };
+      } catch (error: any) {
+        ApiResponse.badRequest(res, `File upload failed: ${error.message}`);
+        return;
+      }
+    }
+
     const siteSubmission = await siteSubmissionService.createSiteSubmission(
       siteSubmissionData
     );
@@ -19,6 +46,7 @@ export const createSiteSubmission = asyncHandler(
       siteSubmission,
       "Site submission created successfully"
     );
+    return;
   }
 );
 

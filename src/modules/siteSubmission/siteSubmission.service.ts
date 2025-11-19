@@ -1,5 +1,12 @@
 import { SiteSubmission, ISiteSubmission } from "./siteSubmission.model";
 import { AppError } from "@/utils/AppError";
+import {
+  sendSiteSubmissionApprovalEmail,
+  sendSiteSubmissionRejectionEmail,
+  sendSiteSubmissionReceivedEmail,
+} from "@/utils/email.utils";
+import { config } from "@/config/env.config";
+import { deleteFileFromVPS } from "@/utils/file.utils";
 
 export interface CreateSiteSubmissionDto {
   userId: string;
@@ -8,9 +15,10 @@ export interface CreateSiteSubmissionDto {
   websites: string[];
   isOwner: boolean;
   csvFile?: {
-    name: string;
-    data: string;
-    type: string;
+    fileName: string;
+    filePath: string;
+    fileSize?: number;
+    mimeType?: string;
   };
 }
 
@@ -30,7 +38,22 @@ export interface SiteSubmissionFilters {
 class SiteSubmissionService {
   async createSiteSubmission(data: CreateSiteSubmissionDto): Promise<ISiteSubmission> {
     const siteSubmission = new SiteSubmission(data);
-    return await siteSubmission.save();
+    const savedSubmission = await siteSubmission.save();
+
+    // Send email notification to user
+    try {
+      await sendSiteSubmissionReceivedEmail({
+        userEmail: data.userEmail,
+        userName: data.userName,
+        websites: data.websites,
+        frontendUrl: config.app.frontendUrl,
+      });
+    } catch (error) {
+      console.error("Failed to send site submission received email:", error);
+      // Don't fail the submission if email fails
+    }
+
+    return savedSubmission;
   }
 
   async getSiteSubmissions(filters: SiteSubmissionFilters): Promise<{
@@ -78,6 +101,16 @@ class SiteSubmissionService {
     id: string,
     data: UpdateSiteSubmissionDto
   ): Promise<ISiteSubmission> {
+    // Get the current submission to check if status is changing
+    const currentSubmission = await SiteSubmission.findById(id);
+    if (!currentSubmission) {
+      throw new AppError("Site submission not found", 404);
+    }
+
+    const oldStatus = currentSubmission.status;
+    const newStatus = data.status;
+
+    // Update the submission
     const siteSubmission = await SiteSubmission.findByIdAndUpdate(
       id,
       {
@@ -93,15 +126,53 @@ class SiteSubmissionService {
       throw new AppError("Site submission not found", 404);
     }
 
+    // Send email notification if status changed
+    if (newStatus && oldStatus !== newStatus) {
+      try {
+        if (newStatus === "approved") {
+          await sendSiteSubmissionApprovalEmail({
+            userEmail: siteSubmission.userEmail,
+            userName: siteSubmission.userName,
+            websites: siteSubmission.websites,
+            frontendUrl: config.app.frontendUrl,
+            adminNotes: data.adminNotes,
+          });
+        } else if (newStatus === "rejected") {
+          await sendSiteSubmissionRejectionEmail({
+            userEmail: siteSubmission.userEmail,
+            userName: siteSubmission.userName,
+            websites: siteSubmission.websites,
+            frontendUrl: config.app.frontendUrl,
+            adminNotes: data.adminNotes,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to send site submission status email:", error);
+        // Don't fail the update if email fails
+      }
+    }
+
     return siteSubmission;
   }
 
   async deleteSiteSubmission(id: string): Promise<void> {
-    const siteSubmission = await SiteSubmission.findByIdAndDelete(id);
+    const siteSubmission = await SiteSubmission.findById(id);
 
     if (!siteSubmission) {
       throw new AppError("Site submission not found", 404);
     }
+
+    // Delete associated file from VPS if exists
+    if (siteSubmission.csvFile?.filePath) {
+      try {
+        await deleteFileFromVPS(siteSubmission.csvFile.filePath);
+      } catch (error) {
+        console.error("Failed to delete file from VPS:", error);
+        // Continue with deletion even if file deletion fails
+      }
+    }
+
+    await SiteSubmission.findByIdAndDelete(id);
   }
 
   async getSiteSubmissionStats(filters: SiteSubmissionFilters = {}): Promise<{
