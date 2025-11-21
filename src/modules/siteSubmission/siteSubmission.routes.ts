@@ -96,8 +96,16 @@ router.post(
   (req, _res, next) => {
     // Debug: Log what multer parsed
     console.log("After multer - req.body:", JSON.stringify(req.body, null, 2));
-    console.log("After multer - req.file:", req.file ? { name: req.file.originalname, size: req.file.size } : null);
+    console.log("After multer - req.files:", req.files ? req.files.map((f: any) => ({ name: f.originalname, fieldname: f.fieldname })) : null);
     console.log("After multer - Content-Type:", req.headers["content-type"]);
+    
+    // Extract CSV file from files array
+    if (req.files && Array.isArray(req.files)) {
+      const csvFile = req.files.find((f: any) => f.fieldname === "csvFile");
+      if (csvFile) {
+        (req as any).file = csvFile;
+      }
+    }
     
     // Ensure fields are strings (multer might return them as strings)
     if (req.body.userEmail && typeof req.body.userEmail !== "string") {
