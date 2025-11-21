@@ -35,20 +35,27 @@ const createSiteSubmissionValidation = [
       }
       return true;
     }),
-  body().custom((body) => {
+  body().custom((body, { req }) => {
     // Ensure at least one email field is provided
-    if (!body.userEmail && !body.email) {
+    const userEmail = body.userEmail || req.body.userEmail;
+    const email = body.email || req.body.email;
+    if (!userEmail && !email) {
       throw new Error("Valid email is required (userEmail or email)");
+    }
+    // Set userEmail if not present but email is
+    if (!req.body.userEmail && email) {
+      req.body.userEmail = email;
     }
     return true;
   }),
   body("websites")
-    .custom((value) => {
-      if (!value) {
+    .custom((value, { req }) => {
+      const websitesValue = value || req.body.websites;
+      if (!websitesValue) {
         throw new Error("At least one website is required");
       }
       try {
-        const websites = typeof value === "string" ? JSON.parse(value) : value;
+        const websites = typeof websitesValue === "string" ? JSON.parse(websitesValue) : websitesValue;
         if (!Array.isArray(websites) || websites.length === 0) {
           throw new Error("At least one website is required");
         }
@@ -58,9 +65,10 @@ const createSiteSubmissionValidation = [
       }
     }),
   body("isOwner")
-    .custom((value) => {
-      const isOwnerValue = value === "true" || value === true || value === "yes" || value === "Yes";
-      if (!isOwnerValue) {
+    .custom((value, { req }) => {
+      const isOwnerValue = value || req.body.isOwner;
+      const isOwner = isOwnerValue === "true" || isOwnerValue === true || isOwnerValue === "yes" || isOwnerValue === "Yes";
+      if (!isOwner) {
         throw new Error("You must confirm that you are the owner");
       }
       return true;
@@ -87,8 +95,26 @@ router.post(
   uploadCSV, // Handle file upload (multer parses FormData)
   (req, _res, next) => {
     // Debug: Log what multer parsed
-    console.log("After multer - req.body:", req.body);
-    console.log("After multer - req.file:", req.file);
+    console.log("After multer - req.body:", JSON.stringify(req.body, null, 2));
+    console.log("After multer - req.file:", req.file ? { name: req.file.originalname, size: req.file.size } : null);
+    console.log("After multer - Content-Type:", req.headers["content-type"]);
+    
+    // Ensure fields are strings (multer might return them as strings)
+    if (req.body.userEmail && typeof req.body.userEmail !== "string") {
+      req.body.userEmail = String(req.body.userEmail);
+    }
+    if (req.body.email && typeof req.body.email !== "string") {
+      req.body.email = String(req.body.email);
+    }
+    if (req.body.websites && typeof req.body.websites !== "string") {
+      req.body.websites = typeof req.body.websites === "object" 
+        ? JSON.stringify(req.body.websites) 
+        : String(req.body.websites);
+    }
+    if (req.body.isOwner !== undefined) {
+      req.body.isOwner = String(req.body.isOwner);
+    }
+    
     next();
   },
   validate(createSiteSubmissionValidation),
