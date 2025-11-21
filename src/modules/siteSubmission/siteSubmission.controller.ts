@@ -13,13 +13,18 @@ export const createSiteSubmission = asyncHandler(
   async (req: Request, res: Response, _next: NextFunction) => {
     // Parse FormData fields
     const siteSubmissionData: CreateSiteSubmissionDto = {
-      userId: req.body.userId,
-      userName: req.body.userName,
-      userEmail: req.body.userEmail,
+      userId: req.body.userId || req.body.user_id,
+      userName: req.body.userName || req.body.name,
+      userEmail: req.body.userEmail || req.body.email,
       websites: typeof req.body.websites === "string" 
         ? JSON.parse(req.body.websites) 
-        : req.body.websites,
-      isOwner: req.body.isOwner === "true" || req.body.isOwner === true,
+        : req.body.websites || (req.body.website ? [req.body.website] : []),
+      isOwner: req.body.isOwner === "true" || req.body.isOwner === true || req.body.websiteOwner === "yes",
+      siteDescription: req.body.siteDescription,
+      monthlyTraffic: req.body.monthlyTraffic || req.body.monthly_traffic,
+      domainAuthority: req.body.domainAuthority || req.body.domain_authority,
+      domainRating: req.body.domainRating || req.body.domain_rating,
+      websiteOwner: req.body.websiteOwner,
     };
 
     // Handle file upload if present

@@ -14,6 +14,11 @@ export interface CreateSiteSubmissionDto {
   userEmail: string;
   websites: string[];
   isOwner: boolean;
+  siteDescription?: string;
+  monthlyTraffic?: string;
+  domainAuthority?: string;
+  domainRating?: string;
+  websiteOwner?: string;
   csvFile?: {
     fileName: string;
     filePath: string;

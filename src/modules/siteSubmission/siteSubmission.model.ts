@@ -6,6 +6,11 @@ export interface ISiteSubmission extends Document {
   userEmail: string;
   websites: string[];
   isOwner: boolean;
+  siteDescription?: string;
+  monthlyTraffic?: string;
+  domainAuthority?: string;
+  domainRating?: string;
+  websiteOwner?: string;
   csvFile?: {
     fileName: string;
     filePath: string; // Path on VPS
@@ -45,6 +50,26 @@ const siteSubmissionSchema = new Schema<ISiteSubmission>(
     isOwner: {
       type: Boolean,
       default: false,
+    },
+    siteDescription: {
+      type: String,
+      trim: true,
+    },
+    monthlyTraffic: {
+      type: String,
+      trim: true,
+    },
+    domainAuthority: {
+      type: String,
+      trim: true,
+    },
+    domainRating: {
+      type: String,
+      trim: true,
+    },
+    websiteOwner: {
+      type: String,
+      trim: true,
     },
     csvFile: {
       type: Schema.Types.Mixed,
