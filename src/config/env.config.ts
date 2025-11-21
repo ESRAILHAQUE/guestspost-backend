@@ -92,6 +92,18 @@ export const config = {
     level: process.env.LOG_LEVEL || "info",
   },
 
+  // Payment Configuration
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY || "",
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || "",
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || "",
+  },
+  paypal: {
+    clientId: process.env.PAYPAL_CLIENT_ID || "",
+    clientSecret: process.env.PAYPAL_CLIENT_SECRET || "",
+    mode: process.env.PAYPAL_MODE || "sandbox", // sandbox or live
+  },
+
   // Helper flags
   isDevelopment: process.env.NODE_ENV === "development",
   isProduction: process.env.NODE_ENV === "production",

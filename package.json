@@ -10,6 +10,7 @@
     "vercel-build": "rimraf dist && tsc",
     "seed": "ts-node -r tsconfig-paths/register src/scripts/seed.ts",
     "clean:files": "ts-node -r tsconfig-paths/register src/scripts/clean-mongodb-files.ts",
+    "test:paypal": "ts-node -r tsconfig-paths/register src/scripts/test-paypal-credentials.ts",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -37,6 +38,8 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.8",
+    "paypal-rest-sdk": "^1.8.1",
+    "stripe": "^17.7.0",
     "tsconfig-paths": "^4.2.0",
     "uuid": "^9.0.1"
   },
@@ -64,4 +67,3 @@
     "pnpm": ">=8.0.0"
   }
 }
-
