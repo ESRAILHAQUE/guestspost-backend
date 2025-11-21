@@ -20,7 +20,7 @@ const router = Router();
 router.get("/:filePath(*)", protect, async (req: Request, res: Response) => {
   try {
     const { filePath } = req.params;
-    
+
     // Security: Prevent directory traversal
     if (filePath.includes("..") || path.isAbsolute(filePath)) {
       return ApiResponse.badRequest(res, "Invalid file path");
@@ -47,7 +47,8 @@ router.get("/:filePath(*)", protect, async (req: Request, res: Response) => {
       ".csv": "text/csv",
       ".pdf": "application/pdf",
       ".doc": "application/msword",
-      ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ".docx":
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       ".txt": "text/plain",
       ".jpg": "image/jpeg",
       ".jpeg": "image/jpeg",
@@ -75,4 +76,3 @@ router.get("/:filePath(*)", protect, async (req: Request, res: Response) => {
 });
 
 export { router as fileRoutes };
-

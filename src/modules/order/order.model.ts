@@ -97,10 +97,8 @@ const orderSchema = new Schema<IOrder>(
       trim: true,
     },
     file: {
-      name: String,
-      type: String,
-      size: Number,
-      data: String,
+      type: Schema.Types.Mixed,
+      default: null,
     },
     message: {
       type: String,

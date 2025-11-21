@@ -13,6 +13,7 @@ import {
 import { validatePasswordStrength } from "@/utils/password.utils";
 import { sendVerificationEmail } from "@/utils/email.utils";
 import { config } from "@/config/env.config";
+import { logger } from "@/utils/logger";
 
 interface RegisterDto {
   user_nicename: string;
@@ -72,14 +73,22 @@ class AuthService {
 
     // Send verification email
     try {
-      await sendVerificationEmail({
+      const emailSent = await sendVerificationEmail({
         userEmail: user.user_email,
         userName: user.user_nicename,
         verificationToken,
         frontendUrl: config.app.frontendUrl,
       });
+      
+      if (!emailSent) {
+        logger.warn(`Verification email not sent to ${user.user_email}. Email service may not be configured.`);
+        // Log the verification token for manual verification if email fails
+        logger.info(`Verification token for ${user.user_email}: ${verificationToken}`);
+      }
     } catch (error) {
-      console.error("Failed to send verification email:", error);
+      logger.error("Failed to send verification email:", error);
+      // Log the verification token for manual verification if email fails
+      logger.info(`Verification token for ${user.user_email}: ${verificationToken}`);
       // Don't fail registration if email fails
     }
 
