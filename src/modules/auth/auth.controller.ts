@@ -17,14 +17,19 @@ export const register = asyncHandler(
   async (req: Request, res: Response, _next: NextFunction) => {
     const result = await authService.register(req.body);
     
-    // Set cookie
-    res.cookie("token", result.tokens.accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    // Set cookie only if tokens exist (email is verified)
+    // For new registrations, tokens will be null until email is verified
+    const tokens = result.tokens as { accessToken: string; refreshToken: string } | null;
+    if (tokens && tokens.accessToken) {
+      res.cookie("token", tokens.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+    }
 
-    return ApiResponse.created(res, result, "User registered successfully");
+    const message = result.message || "User registered successfully. Please verify your email address.";
+    return ApiResponse.created(res, result, message);
   }
 );
 
@@ -38,11 +43,15 @@ export const login = asyncHandler(
     const result = await authService.login(req.body);
     
     // Set cookie
-    res.cookie("token", result.tokens.accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    // Note: tokens should always exist here because login throws error if email not verified
+    const tokens = result.tokens as { accessToken: string; refreshToken: string } | null;
+    if (tokens && tokens.accessToken) {
+      res.cookie("token", tokens.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+    }
 
     return ApiResponse.success(res, result, "Login successful");
   }
@@ -126,11 +135,15 @@ export const googleAuth = asyncHandler(
     const result = await authService.googleAuth(req.body);
     
     // Set cookie
-    res.cookie("token", result.tokens.accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    // Google auth always returns tokens since Google emails are pre-verified
+    const tokens = result.tokens as { accessToken: string; refreshToken: string } | null;
+    if (tokens && tokens.accessToken) {
+      res.cookie("token", tokens.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+    }
 
     return ApiResponse.success(res, result, "Google authentication successful");
   }

@@ -92,13 +92,9 @@ class AuthService {
       // Don't fail registration if email fails
     }
 
-    // Generate tokens
-    const tokens = generateTokens({
-      userId: user._id.toString(),
-      email: user.user_email,
-      role: user.role,
-    });
-
+    // Don't generate tokens if email is not verified
+    // User must verify email before they can login
+    // Return user info but no tokens
     return {
       user: {
         ID: user._id.toString(),
@@ -106,9 +102,10 @@ class AuthService {
         user_email: user.user_email,
         balance: user.balance,
         role: user.role,
-        isEmailVerified: user.isEmailVerified,
+        isEmailVerified: false,
       },
-      tokens,
+      tokens: null,
+      message: "Please verify your email address. A verification link has been sent to your email.",
     };
   }
 
@@ -133,6 +130,13 @@ class AuthService {
     const isPasswordMatch = await user.comparePassword(user_pass);
     if (!isPasswordMatch) {
       throw new UnauthorizedError("Invalid credentials");
+    }
+
+    // Check if email is verified
+    if (!user.isEmailVerified) {
+      throw new UnauthorizedError(
+        "Please verify your email address before logging in. Check your inbox for the verification link."
+      );
     }
 
     // Check if user is active
@@ -320,7 +324,7 @@ class AuthService {
       });
     }
 
-    // Generate tokens
+    // Generate tokens for Google users (they're already verified by Google)
     const tokens = generateTokens({
       userId: user._id.toString(),
       email: user.user_email,
@@ -334,7 +338,7 @@ class AuthService {
         user_email: user.user_email,
         balance: user.balance,
         role: user.role,
-        isEmailVerified: user.isEmailVerified,
+        isEmailVerified: true,
       },
       tokens,
     };
