@@ -20,19 +20,51 @@ const createSiteSubmissionValidation = [
   body("userId").optional(),
   body("userName").optional().trim(),
   body("publisherName").optional().trim(),
-  body("userEmail").isEmail().withMessage("Valid email is required"),
-  body("email").optional().isEmail().withMessage("Valid email is required"),
+  body("userEmail")
+    .optional()
+    .isEmail()
+    .withMessage("Valid email is required"),
+  body("email")
+    .optional()
+    .isEmail()
+    .withMessage("Valid email is required")
+    .custom((value, { req }) => {
+      // If userEmail is not set, use email as userEmail
+      if (!req.body.userEmail && value) {
+        req.body.userEmail = value;
+      }
+      return true;
+    }),
+  body().custom((body) => {
+    // Ensure at least one email field is provided
+    if (!body.userEmail && !body.email) {
+      throw new Error("Valid email is required (userEmail or email)");
+    }
+    return true;
+  }),
   body("websites")
     .custom((value) => {
-      if (!value) return false;
-      const websites = typeof value === "string" ? JSON.parse(value) : value;
-      return Array.isArray(websites) && websites.length > 0;
-    })
-    .withMessage("At least one website is required"),
-  body("isOwner").custom((value) => {
-    if (value === "true" || value === true || value === "yes") return true;
-    return false;
-  }).withMessage("You must confirm that you are the owner"),
+      if (!value) {
+        throw new Error("At least one website is required");
+      }
+      try {
+        const websites = typeof value === "string" ? JSON.parse(value) : value;
+        if (!Array.isArray(websites) || websites.length === 0) {
+          throw new Error("At least one website is required");
+        }
+        return true;
+      } catch (error) {
+        throw new Error("Invalid websites format");
+      }
+    }),
+  body("isOwner")
+    .custom((value) => {
+      const isOwnerValue = value === "true" || value === true || value === "yes" || value === "Yes";
+      if (!isOwnerValue) {
+        throw new Error("You must confirm that you are the owner");
+      }
+      return true;
+    }),
 ];
 
 const updateSiteSubmissionValidation = [
