@@ -84,7 +84,13 @@ const userEmailValidation = [
 // Public routes (for site submissions)
 router.post(
   "/",
-  uploadCSV, // Handle file upload
+  uploadCSV, // Handle file upload (multer parses FormData)
+  (req, res, next) => {
+    // Debug: Log what multer parsed
+    console.log("After multer - req.body:", req.body);
+    console.log("After multer - req.file:", req.file);
+    next();
+  },
   validate(createSiteSubmissionValidation),
   createSiteSubmission
 );

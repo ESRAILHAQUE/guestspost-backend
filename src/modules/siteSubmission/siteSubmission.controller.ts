@@ -11,6 +11,10 @@ import { saveFileToVPS } from "@/utils/file.utils";
 
 export const createSiteSubmission = asyncHandler(
   async (req: Request, res: Response, _next: NextFunction) => {
+    // Debug: Log received data
+    console.log("Received body:", req.body);
+    console.log("Received file:", req.file);
+    
     // Parse FormData fields
     const siteSubmissionData: CreateSiteSubmissionDto = {
       userId: req.body.userId || req.body.user_id || undefined,

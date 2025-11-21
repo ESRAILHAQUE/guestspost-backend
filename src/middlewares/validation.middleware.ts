@@ -12,6 +12,10 @@ import { ValidationError } from "@/utils/AppError";
  */
 export const validate = (validations: ValidationChain[]) => {
   return async (req: Request, _res: Response, next: NextFunction) => {
+    // Debug: Log request body before validation
+    console.log("Validation - req.body:", JSON.stringify(req.body, null, 2));
+    console.log("Validation - Content-Type:", req.headers["content-type"]);
+    
     // Run all validations
     await Promise.all(validations.map((validation) => validation.run(req)));
 
