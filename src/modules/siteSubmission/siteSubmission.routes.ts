@@ -95,10 +95,17 @@ router.post(
   uploadCSV, // Handle file upload (multer parses FormData)
   (req, _res, next) => {
     // Debug: Log what multer parsed
+    console.log("=== MULTER PARSING DEBUG ===");
     console.log("After multer - req.body:", JSON.stringify(req.body, null, 2));
+    console.log("After multer - req.body keys:", Object.keys(req.body || {}));
+    console.log("After multer - req.body.userEmail:", req.body.userEmail);
+    console.log("After multer - req.body.email:", req.body.email);
+    console.log("After multer - req.body.websites:", req.body.websites);
+    console.log("After multer - req.body.isOwner:", req.body.isOwner);
     const files = (req as any).files;
     console.log("After multer - req.files:", files);
     console.log("After multer - Content-Type:", req.headers["content-type"]);
+    console.log("===========================");
     
     // Extract CSV file from files array (multer.any() returns array)
     if (files && Array.isArray(files)) {
@@ -108,7 +115,8 @@ router.post(
       }
     }
     
-    // Ensure fields exist and are strings
+    // Ensure fields exist and are strings - CRITICAL FIX
+    // If multer didn't parse fields, they might be undefined
     if (!req.body.userEmail && req.body.email) {
       req.body.userEmail = req.body.email;
     }
@@ -130,7 +138,12 @@ router.post(
     }
     
     // Final check before validation
-    console.log("Before validation - req.body:", JSON.stringify(req.body, null, 2));
+    console.log("=== BEFORE VALIDATION ===");
+    console.log("req.body.userEmail:", req.body.userEmail);
+    console.log("req.body.email:", req.body.email);
+    console.log("req.body.websites:", req.body.websites);
+    console.log("req.body.isOwner:", req.body.isOwner);
+    console.log("=========================");
     
     next();
   },
