@@ -85,7 +85,7 @@ const userEmailValidation = [
 router.post(
   "/",
   uploadCSV, // Handle file upload (multer parses FormData)
-  (req, res, next) => {
+  (req, _res, next) => {
     // Debug: Log what multer parsed
     console.log("After multer - req.body:", req.body);
     console.log("After multer - req.file:", req.file);
