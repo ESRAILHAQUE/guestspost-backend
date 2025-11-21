@@ -9,11 +9,15 @@ import { config } from "@/config/env.config";
 import { deleteFileFromVPS } from "@/utils/file.utils";
 
 export interface CreateSiteSubmissionDto {
-  userId: string;
+  userId?: string;
   userName: string;
   userEmail: string;
   websites: string[];
   isOwner: boolean;
+  publisherName?: string;
+  country?: string;
+  phone?: string;
+  message?: string;
   siteDescription?: string;
   monthlyTraffic?: string;
   domainAuthority?: string;

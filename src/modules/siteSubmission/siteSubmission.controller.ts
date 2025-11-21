@@ -13,13 +13,17 @@ export const createSiteSubmission = asyncHandler(
   async (req: Request, res: Response, _next: NextFunction) => {
     // Parse FormData fields
     const siteSubmissionData: CreateSiteSubmissionDto = {
-      userId: req.body.userId || req.body.user_id,
-      userName: req.body.userName || req.body.name,
+      userId: req.body.userId || req.body.user_id || undefined,
+      userName: req.body.userName || req.body.name || req.body.publisherName || "Guest User",
       userEmail: req.body.userEmail || req.body.email,
       websites: typeof req.body.websites === "string" 
         ? JSON.parse(req.body.websites) 
         : req.body.websites || (req.body.website ? [req.body.website] : []),
       isOwner: req.body.isOwner === "true" || req.body.isOwner === true || req.body.websiteOwner === "yes",
+      publisherName: req.body.publisherName,
+      country: req.body.country,
+      phone: req.body.phone,
+      message: req.body.message,
       siteDescription: req.body.siteDescription,
       monthlyTraffic: req.body.monthlyTraffic || req.body.monthly_traffic,
       domainAuthority: req.body.domainAuthority || req.body.domain_authority,

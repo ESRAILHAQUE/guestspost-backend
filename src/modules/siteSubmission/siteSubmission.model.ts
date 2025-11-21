@@ -1,11 +1,15 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface ISiteSubmission extends Document {
-  userId: mongoose.Types.ObjectId;
+  userId?: mongoose.Types.ObjectId;
   userName: string;
   userEmail: string;
   websites: string[];
   isOwner: boolean;
+  publisherName?: string;
+  country?: string;
+  phone?: string;
+  message?: string;
   siteDescription?: string;
   monthlyTraffic?: string;
   domainAuthority?: string;
@@ -29,7 +33,7 @@ const siteSubmissionSchema = new Schema<ISiteSubmission>(
     userId: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: false,
     },
     userName: {
       type: String,
@@ -68,6 +72,22 @@ const siteSubmissionSchema = new Schema<ISiteSubmission>(
       trim: true,
     },
     websiteOwner: {
+      type: String,
+      trim: true,
+    },
+    publisherName: {
+      type: String,
+      trim: true,
+    },
+    country: {
+      type: String,
+      trim: true,
+    },
+    phone: {
+      type: String,
+      trim: true,
+    },
+    message: {
       type: String,
       trim: true,
     },

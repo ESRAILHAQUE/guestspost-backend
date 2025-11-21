@@ -17,13 +17,22 @@ const router = Router();
 
 // Validation middleware
 const createSiteSubmissionValidation = [
-  body("userId").notEmpty().withMessage("User ID is required"),
-  body("userName").trim().notEmpty().withMessage("User name is required"),
+  body("userId").optional(),
+  body("userName").optional().trim(),
+  body("publisherName").optional().trim(),
   body("userEmail").isEmail().withMessage("Valid email is required"),
+  body("email").optional().isEmail().withMessage("Valid email is required"),
   body("websites")
-    .isArray({ min: 1 })
+    .custom((value) => {
+      if (!value) return false;
+      const websites = typeof value === "string" ? JSON.parse(value) : value;
+      return Array.isArray(websites) && websites.length > 0;
+    })
     .withMessage("At least one website is required"),
-  body("isOwner").isBoolean().withMessage("isOwner must be a boolean"),
+  body("isOwner").custom((value) => {
+    if (value === "true" || value === true || value === "yes") return true;
+    return false;
+  }).withMessage("You must confirm that you are the owner"),
 ];
 
 const updateSiteSubmissionValidation = [
