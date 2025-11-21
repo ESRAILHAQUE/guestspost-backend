@@ -56,6 +56,6 @@ export const uploadMultiple = (fieldName: string = "files", maxCount: number = 1
 };
 
 // Middleware for CSV file upload (site submissions)
-// Use .any() to parse both file and all FormData fields
+// Use .any() to parse ALL FormData fields (both file and text fields)
 export const uploadCSV = upload.any();
 

@@ -13,8 +13,13 @@ import { ValidationError } from "@/utils/AppError";
 export const validate = (validations: ValidationChain[]) => {
   return async (req: Request, _res: Response, next: NextFunction) => {
     // Debug: Log request body before validation
-    console.log("Validation - req.body:", JSON.stringify(req.body, null, 2));
+    console.log("Validation - req.body keys:", Object.keys(req.body));
+    console.log("Validation - req.body values:", JSON.stringify(req.body, null, 2));
     console.log("Validation - Content-Type:", req.headers["content-type"]);
+    console.log("Validation - userEmail:", req.body.userEmail);
+    console.log("Validation - email:", req.body.email);
+    console.log("Validation - websites:", req.body.websites);
+    console.log("Validation - isOwner:", req.body.isOwner);
     
     // Run all validations
     await Promise.all(validations.map((validation) => validation.run(req)));

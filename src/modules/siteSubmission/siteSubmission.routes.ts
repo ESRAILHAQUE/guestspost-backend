@@ -97,12 +97,10 @@ router.post(
     // Debug: Log what multer parsed
     console.log("After multer - req.body:", JSON.stringify(req.body, null, 2));
     const files = (req as any).files;
-    console.log("After multer - req.files:", files && Array.isArray(files) 
-      ? files.map((f: any) => ({ name: f.originalname, fieldname: f.fieldname })) 
-      : null);
+    console.log("After multer - req.files:", files);
     console.log("After multer - Content-Type:", req.headers["content-type"]);
     
-    // Extract CSV file from files array
+    // Extract CSV file from files array (multer.any() returns array)
     if (files && Array.isArray(files)) {
       const csvFile = files.find((f: any) => f.fieldname === "csvFile");
       if (csvFile) {
@@ -110,21 +108,29 @@ router.post(
       }
     }
     
-    // Ensure fields are strings (multer might return them as strings)
+    // Ensure fields exist and are strings
+    if (!req.body.userEmail && req.body.email) {
+      req.body.userEmail = req.body.email;
+    }
     if (req.body.userEmail && typeof req.body.userEmail !== "string") {
-      req.body.userEmail = String(req.body.userEmail);
+      req.body.userEmail = String(req.body.userEmail).trim();
     }
     if (req.body.email && typeof req.body.email !== "string") {
-      req.body.email = String(req.body.email);
+      req.body.email = String(req.body.email).trim();
     }
-    if (req.body.websites && typeof req.body.websites !== "string") {
-      req.body.websites = typeof req.body.websites === "object" 
-        ? JSON.stringify(req.body.websites) 
-        : String(req.body.websites);
+    if (req.body.websites) {
+      if (typeof req.body.websites !== "string") {
+        req.body.websites = typeof req.body.websites === "object" 
+          ? JSON.stringify(req.body.websites) 
+          : String(req.body.websites);
+      }
     }
-    if (req.body.isOwner !== undefined) {
+    if (req.body.isOwner !== undefined && req.body.isOwner !== null) {
       req.body.isOwner = String(req.body.isOwner);
     }
+    
+    // Final check before validation
+    console.log("Before validation - req.body:", JSON.stringify(req.body, null, 2));
     
     next();
   },
