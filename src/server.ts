@@ -45,7 +45,7 @@ const startServer = async (): Promise<void> => {
       });
     });
 
-    // Handle uncaught exceptions
+   
     process.on("uncaughtException", (err: Error) => {
       logger.error(`Uncaught Exception: ${err.message}`);
       logger.error("Shutting down server...");
