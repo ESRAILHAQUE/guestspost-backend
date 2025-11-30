@@ -1,9 +1,11 @@
+const path = require("path");
+
 module.exports = {
   apps: [
     {
       name: "guestpost-backend",
       script: "dist/server.js",
-      cwd: "/var/www/guestpostnow/Backend",
+      // cwd will be set to the directory where PM2 is run from
       instances: 1,
       exec_mode: "fork",
       watch: false,

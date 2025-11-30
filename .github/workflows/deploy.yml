@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          repository: ESRAILHAQUE/guestspost-backend
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -31,10 +33,63 @@ jobs:
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: 22
-          timeout: 30s
+          timeout: 60s
+          command_timeout: 10m
           script: |
-            cd /var/www/guestpostnow/guestpostnow-backend
-            git pull origin main
+            # Navigate to backend directory - check both possible paths
+            if [ -d "/var/www/guestpostnow/Backend" ]; then
+              cd /var/www/guestpostnow/Backend
+            elif [ -d "/var/www/guestpostnow/guestpostnow-backend" ]; then
+              cd /var/www/guestpostnow/guestpostnow-backend
+            else
+              echo "Backend directory not found. Creating it..."
+              mkdir -p /var/www/guestpostnow/Backend
+              cd /var/www/guestpostnow/Backend
+              git clone https://github.com/ESRAILHAQUE/guestspost-backend.git .
+            fi
+
+            # Pull latest code
+            git pull origin main || echo "Git pull failed, continuing..."
+
+            # Install dependencies
             npm install
+
+            # Build project
             npm run build
-            pm2 restart guestpostnow-backend
+
+            # Create logs directory if it doesn't exist
+            mkdir -p logs
+
+            # Check if PM2 process exists (try both possible names)
+            PM2_NAME="guestpost-backend"
+            if pm2 list | grep -q "guestpost-backend"; then
+              PM2_NAME="guestpost-backend"
+            elif pm2 list | grep -q "guestpostnow-backend"; then
+              PM2_NAME="guestpostnow-backend"
+              echo "Found existing process with name 'guestpostnow-backend', will use that"
+            fi
+
+            # Check if PM2 process exists, if not start it, else restart
+            if pm2 list | grep -q "$PM2_NAME"; then
+              echo "PM2 process '$PM2_NAME' found, restarting..."
+              pm2 restart $PM2_NAME
+            else
+              echo "PM2 process not found, starting new process..."
+              # Check if ecosystem.config.js exists
+              if [ -f "ecosystem.config.js" ]; then
+                pm2 start ecosystem.config.js
+              else
+                # Fallback: start manually
+                pm2 start dist/server.js --name $PM2_NAME --cwd $(pwd)
+              fi
+              pm2 save
+              # Update PM2_NAME to the one we just started
+              PM2_NAME="guestpost-backend"
+            fi
+
+            # Show PM2 status
+            pm2 status
+
+            # Show recent logs
+            echo "=== Recent PM2 Logs for $PM2_NAME ==="
+            pm2 logs $PM2_NAME --lines 20 --nostream || echo "No logs available yet"
