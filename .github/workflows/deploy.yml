@@ -60,36 +60,52 @@ jobs:
             # Create logs directory if it doesn't exist
             mkdir -p logs
 
-            # Check if PM2 process exists (try both possible names)
+            # Determine PM2 process name - check for existing processes first
             PM2_NAME="guestpost-backend"
+            
+            # Check if either process name exists
             if pm2 list | grep -q "guestpost-backend"; then
               PM2_NAME="guestpost-backend"
+              echo "Found existing PM2 process: guestpost-backend"
             elif pm2 list | grep -q "guestpostnow-backend"; then
               PM2_NAME="guestpostnow-backend"
-              echo "Found existing process with name 'guestpostnow-backend', will use that"
+              echo "Found existing PM2 process: guestpostnow-backend"
             fi
 
-            # Check if PM2 process exists, if not start it, else restart
+            # Start or restart the PM2 process
             if pm2 list | grep -q "$PM2_NAME"; then
-              echo "PM2 process '$PM2_NAME' found, restarting..."
-              pm2 restart $PM2_NAME
+              echo "Restarting PM2 process: $PM2_NAME"
+              pm2 restart $PM2_NAME || {
+                echo "Restart failed, trying to delete and start fresh..."
+                pm2 delete $PM2_NAME || true
+                if [ -f "ecosystem.config.js" ]; then
+                  pm2 start ecosystem.config.js
+                  PM2_NAME="guestpost-backend"
+                else
+                  pm2 start dist/server.js --name guestpost-backend --cwd $(pwd)
+                  PM2_NAME="guestpost-backend"
+                fi
+              }
             else
-              echo "PM2 process not found, starting new process..."
+              echo "PM2 process not found, starting new process: guestpost-backend"
               # Check if ecosystem.config.js exists
               if [ -f "ecosystem.config.js" ]; then
                 pm2 start ecosystem.config.js
+                PM2_NAME="guestpost-backend"
               else
                 # Fallback: start manually
-                pm2 start dist/server.js --name $PM2_NAME --cwd $(pwd)
+                pm2 start dist/server.js --name guestpost-backend --cwd $(pwd)
+                PM2_NAME="guestpost-backend"
               fi
-              pm2 save
-              # Update PM2_NAME to the one we just started
-              PM2_NAME="guestpost-backend"
             fi
 
+            # Save PM2 configuration
+            pm2 save || true
+
             # Show PM2 status
+            echo "=== PM2 Status ==="
             pm2 status
 
             # Show recent logs
             echo "=== Recent PM2 Logs for $PM2_NAME ==="
-            pm2 logs $PM2_NAME --lines 20 --nostream || echo "No logs available yet"
+            pm2 logs $PM2_NAME --lines 20 --nostream 2>/dev/null || echo "No logs available yet"
